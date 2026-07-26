@@ -65,6 +65,17 @@ case "$command" in
   config)
     "${compose[@]}" config --quiet
     ;;
+  agent-build)
+    "${compose[@]}" build network-agent
+    ;;
+  agent-validate)
+    "${compose[@]}" --profile agent run --rm --no-deps network-agent \
+      --config /etc/netpulse-agent/agent.yaml validate-config
+    ;;
+  agent-test)
+    "${compose[@]}" --profile test run --rm tests -p no:cacheprovider \
+      services/network-agent/tests
+    ;;
   *)
     echo "Unknown command: $command" >&2
     exit 2

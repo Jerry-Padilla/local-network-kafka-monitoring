@@ -35,11 +35,18 @@ Normal `down` preserves them. `reset` removes them and all local demo data.
 ./scripts/netpulse.ps1 test-integration
 ./scripts/netpulse.ps1 demo
 ./scripts/netpulse.ps1 verify
+./scripts/netpulse.ps1 agent-validate
+./scripts/netpulse.ps1 agent-test
 ```
 
 The verification command requires both agents, typed measurements, no duplicate
 raw `event_id`, and a successful query connection. Integration tests also prove
 malformed-record evidence and dead-letter acknowledgement.
+
+The opt-in `agent` profile is a local software harness, not the Raspberry Pi
+deployment path. It mounts `config/agent.example.yaml` and a persistent
+`agent-outbox` volume. Build and validate it with `agent-build` and
+`agent-validate`; use the systemd instructions for physical devices.
 
 ## Configuration
 

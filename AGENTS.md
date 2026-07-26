@@ -4,9 +4,9 @@
 
 NetPulse is a portfolio-oriented, multi-agent home-network observability
 prototype. Phase 1 implements a local at-least-once ingestion path from a
-deterministic simulator through Kafka to PostgreSQL. Later phases add the
-Raspberry Pi agent, Spark, incident classification, analytics, dashboards,
-API, and Kubernetes.
+deterministic simulator through Kafka to PostgreSQL. Phase 2 adds the
+lightweight Raspberry Pi agent and durable SQLite outbox. Later phases add
+Spark, incident classification, analytics, dashboards, API, and Kubernetes.
 
 ## Service map
 
@@ -14,6 +14,8 @@ API, and Kubernetes.
 - `services/simulator`: deterministic two-agent Kafka producer.
 - `services/event-ingestor`: validation, dead-letter routing, deduplication,
   and PostgreSQL persistence.
+- `services/network-agent`: configurable collectors, privacy controls,
+  SQLite outbox, and acknowledged Kafka delivery.
 - `database`: Alembic migrations and database tests.
 - `schemas`: versioned JSON Schema contracts.
 - `scripts`: cross-platform developer and stack-verification commands.

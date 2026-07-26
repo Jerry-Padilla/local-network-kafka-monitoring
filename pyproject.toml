@@ -10,6 +10,7 @@ addopts = "-ra --strict-config --strict-markers --import-mode=importlib"
 testpaths = ["packages", "services", "tests"]
 pythonpath = [
   "packages/contracts/src",
+  "services/network-agent/src",
   "services/simulator/src",
   "services/event-ingestor/src",
 ]
@@ -19,7 +20,7 @@ markers = [
 
 [tool.coverage.run]
 branch = true
-source = ["netpulse_contracts", "netpulse_simulator", "netpulse_ingestion"]
+source = ["netpulse_agent", "netpulse_contracts", "netpulse_simulator", "netpulse_ingestion"]
 omit = ["**/__main__.py"]
 
 [tool.coverage.report]
@@ -45,10 +46,11 @@ python_version = "3.12"
 strict = true
 mypy_path = [
   "packages/contracts/src",
+  "services/network-agent/src",
   "services/simulator/src",
   "services/event-ingestor/src",
 ]
-packages = ["netpulse_contracts", "netpulse_simulator", "netpulse_ingestion"]
+packages = ["netpulse_agent", "netpulse_contracts", "netpulse_simulator", "netpulse_ingestion"]
 exclude = ["Microsoft"]
 plugins = ["pydantic.mypy"]
 

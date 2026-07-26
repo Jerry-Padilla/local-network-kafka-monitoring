@@ -52,6 +52,28 @@ Check the bootstrap address. Host commands use `localhost:29092`; Compose
 services use `kafka:9092`. Producer delivery timeout is intentional and prevents
 silent loss.
 
+## Agent queue depth keeps increasing
+
+Run `outbox-status`, confirm the configured Kafka address is reachable from the
+agent, and inspect structured delivery errors. On a Pi, `localhost` means the
+Pi itself; use the backend computer's secured private-LAN listener. Do not
+delete SQLite to clear the symptom. Restore connectivity and use
+`publish-once` before restarting the continuous service.
+
+## Agent events are dead-lettered as unrecognized endpoints
+
+Every configured `endpoint_id` must exist and be enabled in PostgreSQL's
+`endpoints` table. Apply all Alembic migrations and register deliberate custom
+aliases before publishing. The ingestor loads enabled references from
+PostgreSQL at startup, so restart it after changing the catalog.
+
+## Wi-Fi diagnostics are unavailable
+
+Confirm `iw` is installed and the configured interface appears under `iw dev`.
+An Ethernet agent should set `collectors.wifi.enabled: false`. A missing
+interface produces a valid disconnected measurement and must not terminate the
+agent.
+
 ## PowerShell blocks script execution
 
 Use an appropriately scoped PowerShell execution policy approved by your

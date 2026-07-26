@@ -13,6 +13,9 @@ class FakeResult:
     def fetchone(self):
         return (1,)
 
+    def fetchall(self):
+        return [("reference-id",)]
+
 
 class FakeConnection:
     def __init__(self) -> None:
@@ -119,3 +122,13 @@ def test_failure_evidence_marking_and_healthcheck(monkeypatch) -> None:
     statements = [sql for sql, _params in FakePool.latest.connection_instance.executions]
     assert any("INSERT INTO processing_failures" in sql for sql in statements)
     assert any("UPDATE processing_failures" in sql for sql in statements)
+
+
+def test_reference_allowlists_are_loaded_from_database(monkeypatch) -> None:
+    monkeypatch.setattr("netpulse_ingestion.repository.ConnectionPool", FakePool)
+    repository = PostgresEventRepository("postgresql://example")
+
+    agents, endpoints = repository.load_reference_ids()
+
+    assert agents == {"reference-id"}
+    assert endpoints == {"reference-id"}

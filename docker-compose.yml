@@ -123,6 +123,20 @@ services:
       NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
     networks: [backend]
 
+  network-agent:
+    profiles: [agent]
+    build:
+      context: .
+      dockerfile: services/network-agent/Dockerfile
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      NETPULSE_OUTBOX_PATH: /var/lib/netpulse-agent/outbox.db
+    volumes:
+      - ./config/agent.example.yaml:/etc/netpulse-agent/agent.yaml:ro
+      - agent-outbox:/var/lib/netpulse-agent
+    restart: unless-stopped
+    networks: [backend]
+
   tests:
     profiles: [test]
     build:
@@ -140,5 +154,6 @@ networks:
     internal: false
 
 volumes:
+  agent-outbox:
   kafka-data:
   postgres-data:

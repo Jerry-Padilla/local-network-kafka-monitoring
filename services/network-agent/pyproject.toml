@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netpulse-network-agent"
+version = "0.2.0"
+description = "Lightweight Raspberry Pi measurement agent for NetPulse"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "confluent-kafka==2.8.2",
+  "dnspython==2.7.0",
+  "netpulse-contracts==0.1.0",
+  "pydantic==2.11.1",
+  "PyYAML==6.0.2",
+  "structlog==25.2.0",
+]
+
+[project.scripts]
+netpulse-agent = "netpulse_agent.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netpulse_agent"]

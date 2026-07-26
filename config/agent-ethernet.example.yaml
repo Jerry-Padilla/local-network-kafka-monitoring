@@ -1,0 +1,49 @@
+agent:
+  agent_id: network-agent-ethernet-01
+  role: wired_reference
+  source_version: 0.2.0
+
+kafka:
+  bootstrap_servers: localhost:29092
+  client_id: netpulse-network-agent-ethernet-01
+
+outbox:
+  path: /var/lib/netpulse-agent/outbox.db
+  maximum_bytes: 268435456
+  batch_size: 50
+  retry_base_seconds: 1
+  retry_max_seconds: 300
+  acknowledged_retention_seconds: 86400
+
+privacy:
+  ssid: omit
+  bssid: omit
+  hash_salt: replace-this-with-a-private-device-specific-salt
+  include_target_addresses: false
+
+collectors:
+  router_ping:
+    endpoints:
+      - endpoint_id: router
+        address: 192.0.2.1
+  external_ping:
+    endpoints:
+      - endpoint_id: public-dns-a
+        address: 198.51.100.10
+      - endpoint_id: public-dns-b
+        address: 203.0.113.10
+  dns:
+    endpoints:
+      - endpoint_id: dns-check
+        domain: example.test
+        resolver: 192.0.2.53
+  http:
+    endpoints:
+      - endpoint_id: example-service
+        address: https://service.example.test/health
+  wifi:
+    enabled: false
+  heartbeat:
+    enabled: true
+  speed_test:
+    enabled: false

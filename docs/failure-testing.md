@@ -5,7 +5,7 @@ deleting prior local volumes is acceptable.
 
 ## Kafka interruption
 
-1. Start the stack and a longer simulator scenario.
+1. Start the stack and a longer simulator or physical-agent scenario.
 2. Run `docker compose stop kafka`.
 3. Observe bounded producer delivery failures and ingestor retry logs.
 4. Run `docker compose start kafka` and wait for health.
@@ -13,7 +13,24 @@ deleting prior local volumes is acceptable.
 
 The Phase 1 simulator has no durable outbox, so events that it cannot publish
 are reported as failures rather than silently discarded. The Raspberry Pi
-SQLite outbox is Phase 2.
+agent instead retains its already-collected events in SQLite.
+
+## Agent outbox recovery
+
+1. Stop Kafka or point a disposable agent config at an unavailable broker.
+2. Run `collect-once` without `--publish`.
+3. Run `outbox-status` and record the nonzero pending count.
+4. Restore Kafka and run `publish-once`.
+5. Confirm pending reaches zero and query PostgreSQL by the emitted event IDs.
+6. Confirm stored `event_time` values match the original SQLite payloads.
+
+Do not delete the outbox database to make a recovery test pass. A Kafka
+delivery callback, not a successful `produce()` call, is the acknowledgement
+boundary.
+
+To test the storage ceiling, use a disposable outbox and a deliberately small
+`maximum_bytes`. Verify collection reports `OutboxFullError` and that existing
+undelivered rows remain present. Never fill the Pi's root filesystem as a test.
 
 ## PostgreSQL interruption
 

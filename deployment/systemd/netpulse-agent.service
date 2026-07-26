@@ -1,0 +1,24 @@
+[Unit]
+Description=NetPulse network measurement agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=netpulse
+Group=netpulse
+EnvironmentFile=-/etc/netpulse-agent/agent.env
+ExecStart=/opt/netpulse-agent/venv/bin/netpulse-agent --config /etc/netpulse-agent/agent.yaml run
+Restart=on-failure
+RestartSec=10
+StateDirectory=netpulse-agent
+StateDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/netpulse-agent
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

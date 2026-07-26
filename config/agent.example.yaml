@@ -1,0 +1,76 @@
+agent:
+  agent_id: network-agent-wifi-01
+  role: wifi_observer
+  source_version: 0.2.0
+
+kafka:
+  bootstrap_servers: localhost:29092
+  client_id: netpulse-network-agent-wifi-01
+  compression: zstd
+  delivery_timeout_seconds: 10
+  poll_interval_seconds: 1
+
+outbox:
+  path: /var/lib/netpulse-agent/outbox.db
+  maximum_bytes: 268435456
+  batch_size: 50
+  retry_base_seconds: 1
+  retry_max_seconds: 300
+  acknowledged_retention_seconds: 86400
+
+privacy:
+  ssid: omit
+  bssid: omit
+  hash_salt: replace-this-with-a-private-device-specific-salt
+  include_target_addresses: false
+
+collectors:
+  router_ping:
+    enabled: true
+    interval_seconds: 5
+    sample_count: 3
+    timeout_seconds: 2
+    endpoints:
+      - endpoint_id: router
+        address: 192.0.2.1
+  external_ping:
+    enabled: true
+    interval_seconds: 5
+    sample_count: 3
+    timeout_seconds: 2
+    endpoints:
+      - endpoint_id: public-dns-a
+        address: 198.51.100.10
+      - endpoint_id: public-dns-b
+        address: 203.0.113.10
+  dns:
+    enabled: true
+    interval_seconds: 15
+    timeout_seconds: 3
+    endpoints:
+      - endpoint_id: dns-check
+        domain: example.test
+        resolver: 192.0.2.53
+        record_type: A
+  http:
+    enabled: true
+    interval_seconds: 30
+    timeout_seconds: 5
+    maximum_body_bytes: 1024
+    endpoints:
+      - endpoint_id: example-service
+        address: https://service.example.test/health
+  wifi:
+    enabled: true
+    interval_seconds: 10
+    endpoint_id: wifi-interface
+    interface: wlan0
+  heartbeat:
+    enabled: true
+    interval_seconds: 60
+  speed_test:
+    enabled: false
+    interval_seconds: 3600
+    provider: speedtest-cli
+    server_id: null
+    timeout_seconds: 180

@@ -22,6 +22,7 @@ KNOWN_AGENTS = {
 KNOWN_ENDPOINTS = {
     "router",
     "public-dns-a",
+    "public-dns-b",
     "wifi-interface",
     "dns-check",
     "example-service",

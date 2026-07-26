@@ -8,6 +8,11 @@
 - There is no atomic Kafka/PostgreSQL transaction; output records can repeat.
 - The simulator is evidence-generating test software, not real network
   measurement hardware, and has no durable local queue.
+- The Phase 2 agent has mocked tests and local Docker/Kafka recovery evidence,
+  but has not yet been installed or resource-tested on a physical Pi Zero W or
+  Pi 3.
+- The default backend Kafka listener is loopback-only. A Pi requires an
+  explicitly secured private-LAN listener; this is not enabled automatically.
 - Kafka consumer-lag, infrastructure metrics, Grafana, and alerting are later
   phases.
 - Static anomaly scoring and incident classification are not implemented.

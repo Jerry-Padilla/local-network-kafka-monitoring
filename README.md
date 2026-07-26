@@ -5,10 +5,13 @@ prototype. It compares a wired reference with a fixed Wi-Fi observer so later
 incident logic can distinguish probable local wireless degradation from router,
 ISP, DNS, and external-service symptoms.
 
-Phase 1 implements and tests the local ingestion foundation:
+Phase 1 implements the validated local ingestion foundation. Phase 2 adds the
+lightweight agent software and its durable local queue:
 
 ```mermaid
 flowchart LR
+    A[Raspberry Pi agent collectors] --> O[(SQLite outbox)]
+    O -->|acknowledged delivery| K[(Kafka KRaft)]
     S[Deterministic two-agent simulator] -->|versioned JSON, agent_id key| K[(Kafka KRaft)]
     K --> C[Event ingestor]
     C -->|valid and deduplicated| P[(PostgreSQL)]
@@ -20,7 +23,7 @@ flowchart LR
 This is a small local test bed for data-engineering concepts, not an ISP-grade
 monitor, a production-scale benchmark, or definitive root-cause detection.
 
-## What works in Phase 1
+## What works
 
 - Eight explicitly configured Kafka topics on a single KRaft broker.
 - Version 1 JSON Schema and Pydantic contracts with additive-field compatibility.
@@ -30,10 +33,16 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
   acknowledgements, replay-safe `event_id` upserts, and dead-letter evidence.
 - Docker Compose, Alembic migrations, structured logs, CI, unit/contract tests,
   a live integration test, and stack verification.
+- Configurable ping, DNS, bounded HTTP, Wi-Fi, heartbeat, and opt-in speed-test
+  collectors suitable for headless Raspberry Pi OS.
+- A size-bounded SQLite outbox that preserves event time, retries with bounded
+  exponential backoff, and marks delivery only after Kafka acknowledgement.
+- SSID/BSSID omission or hashing, target-address omission, systemd service
+  assets, and mock-based hardware/error tests.
 
-Spark, real Raspberry Pi collectors, local SQLite buffering, incident
-classification, dashboards, query APIs, Kubernetes, and measured capacity
-results are intentionally not implemented yet.
+Physical Pi Zero W/Pi 3 installation and resource measurements have not been
+executed. Spark, incident classification, dashboards, query APIs, Kubernetes,
+and measured capacity results are intentionally not implemented yet.
 
 ## Quick start
 
@@ -79,6 +88,9 @@ identifiers.
 | Verify stored invariants | `make verify` | `./scripts/netpulse.ps1 verify` |
 | Inspect topics | `make kafka-topics` | `./scripts/netpulse.ps1 kafka-topics` |
 | Open PostgreSQL shell | `make db-shell` | `./scripts/netpulse.ps1 db-shell` |
+| Build the agent image | `make agent-build` | `./scripts/netpulse.ps1 agent-build` |
+| Validate sample agent config | `make agent-validate` | `./scripts/netpulse.ps1 agent-validate` |
+| Run agent tests | `make agent-test` | `./scripts/netpulse.ps1 agent-test` |
 | Stop containers | `make down` | `./scripts/netpulse.ps1 down` |
 
 `reset` additionally deletes the named Kafka and PostgreSQL volumes and is
@@ -112,11 +124,16 @@ A crash between these steps can replay work. PostgreSQL deduplicates by
 `event_id` and source coordinates, but downstream Kafka output can repeat.
 NetPulse therefore promises at-least-once delivery, not end-to-end exactly once.
 
+The agent first stores every event in SQLite. Kafka callback success marks it
+delivered; failure leaves it queued with retry metadata. Collection continues
+on separate worker threads while Kafka is unavailable.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md)
 - [Data contracts](docs/data-contracts.md)
 - [Local deployment](docs/deployment.md)
+- [Raspberry Pi setup](docs/raspberry-pi-setup.md)
 - [Failure testing](docs/failure-testing.md)
 - [Security and privacy](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -124,6 +141,8 @@ NetPulse therefore promises at-least-once delivery, not end-to-end exactly once.
 - [Roadmap](docs/roadmap.md)
 - [Initial repository assessment](docs/repository-assessment.md)
 - [Phase 1 completion report](docs/phase1-completion-report.md)
+- [Phase 2 implementation checklist](docs/phase2-implementation-plan.md)
+- [Phase 2 software completion report](docs/phase2-completion-report.md)
 
 ## Portfolio description
 
@@ -134,9 +153,11 @@ NetPulse therefore promises at-least-once delivery, not end-to-end exactly once.
   routing, and replay-safe database writes.
 - Added deterministic network-failure scenarios and automated tests for schema
   compatibility, invalid-event evidence, and event-ID deduplication.
+- Implemented a configurable headless measurement agent with privacy controls,
+  mockable Linux collectors, and an acknowledgement-gated SQLite outbox.
 
-Only completed Phase 1 capabilities are claimed here. See the roadmap before
-using broader project-description language.
+Only validated Phase 1 and implemented Phase 2 software capabilities are
+claimed here; physical Raspberry Pi validation remains outstanding.
 
 ## License
 

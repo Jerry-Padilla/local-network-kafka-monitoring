@@ -4,7 +4,8 @@ param(
     [ValidateSet(
         "setup", "lint", "format", "typecheck", "test", "test-unit",
         "test-integration", "up", "down", "reset", "logs", "demo", "verify",
-        "kafka-topics", "db-shell", "config"
+        "kafka-topics", "db-shell", "config", "agent-build", "agent-validate",
+        "agent-test"
     )]
     [string]$Command = "config"
 )
@@ -84,5 +85,14 @@ switch ($Command) {
     }
     "config" {
         Invoke-DockerCompose @("config", "--quiet")
+    }
+    "agent-build" {
+        Invoke-DockerCompose @("build", "network-agent")
+    }
+    "agent-validate" {
+        Invoke-DockerCompose @("--profile", "agent", "run", "--rm", "--no-deps", "network-agent", "--config", "/etc/netpulse-agent/agent.yaml", "validate-config")
+    }
+    "agent-test" {
+        Invoke-DockerCompose @("--profile", "test", "run", "--rm", "tests", "-p", "no:cacheprovider", "services/network-agent/tests")
     }
 }

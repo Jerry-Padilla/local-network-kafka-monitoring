@@ -23,6 +23,10 @@ class FakeRepository:
         self.calls.append("healthcheck")
         return True
 
+    def load_reference_ids(self) -> tuple[set[str], set[str]]:
+        self.calls.append("load_references")
+        return {"network-agent-wifi-01"}, {"public-dns-a"}
+
 
 class FakePublisher:
     def __init__(self, **_kwargs) -> None:
@@ -74,4 +78,4 @@ def test_run_command_closes_publisher_and_repository(monkeypatch) -> None:
     monkeypatch.setattr(cli, "IngestionConsumer", FakeConsumer)
 
     assert cli.main(["run"]) == 0
-    assert FakeRepository.instances[-1].calls == ["open", "close"]
+    assert FakeRepository.instances[-1].calls == ["open", "load_references", "close"]

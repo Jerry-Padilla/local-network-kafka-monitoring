@@ -1,4 +1,5 @@
 -e ./packages/contracts
+-e ./services/network-agent
 -e ./services/simulator
 -e ./services/event-ingestor
 alembic==1.15.2

@@ -1,9 +1,12 @@
-# Phase 1 architecture
+# NetPulse local architecture
 
 ## Components
 
 - The simulator models fabricated wired and Wi-Fi agents. It validates every
   normal event before publication and keys Kafka records by `agent_id`.
+- The physical agent runs collectors independently, validates events, and
+  writes SQLite before attempting Kafka publication. Only delivery callbacks
+  mark outbox records acknowledged.
 - Kafka runs as one local KRaft broker. Topic creation is explicit and
   idempotent; auto-creation is disabled.
 - The event ingestor validates untrusted records, checks configured agent and
@@ -14,13 +17,16 @@
 
 ```mermaid
 sequenceDiagram
-    participant S as Simulator
+    participant A as Agent collector
+    participant Q as SQLite outbox
     participant K as Kafka raw topic
     participant I as Event ingestor
     participant P as PostgreSQL
     participant O as Valid or DLQ topic
 
-    S->>K: produce(key=agent_id, versioned JSON)
+    A->>Q: insert validated event
+    Q->>K: produce(key=agent_id, original JSON)
+    K-->>Q: delivery acknowledgement
     K->>I: poll(topic, partition, offset)
     I->>I: decode + validate contract/references
     alt valid
@@ -91,3 +97,9 @@ after database commit can republish validated output. Database writes are
 idempotent; future Spark and classifier consumers must deduplicate `event_id`.
 Producer idempotence reduces duplicate retries within one producer session but
 does not change the end-to-end guarantee.
+
+The physical agent adds a second reliability boundary before Kafka. Collection
+continues while Kafka is unavailable, pending events retain their original
+timestamps, and a delivery acknowledgement can be lost during a crash. This is
+also at-least-once delivery; downstream `event_id` deduplication remains
+mandatory.

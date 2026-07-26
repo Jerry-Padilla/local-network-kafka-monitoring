@@ -16,7 +16,12 @@ Phase 1 is designed for loopback-only local development.
   credentials. Original invalid payloads are retained in PostgreSQL and the
   dead-letter topic, so real deployments must restrict access and retention.
 - Sample SSIDs, BSSIDs, hostnames, endpoints, and network identifiers are
-  fabricated. Later agent configuration will allow redaction or hashing.
+  fabricated.
+- The network agent monitors only endpoints in its validated YAML file and
+  passes command arguments without shell interpolation.
+- SSID and BSSID fields default to omission and may be independently hashed
+  with a device-local salt. Raw target addresses are omitted from events by
+  default.
 
 Before shared or remote deployment, add encrypted Kafka transport and
 authentication, rotate all credentials, restrict container networks and host

@@ -1,11 +1,11 @@
 # Roadmap
 
-1. Validate the complete Phase 1 Compose acceptance suite and close any
-   environment-specific defects.
-2. Build the lightweight Raspberry Pi agent with configurable ping, DNS, HTTP,
-   Wi-Fi, heartbeat, optional speed-test collectors, and a bounded SQLite
-   outbox.
-3. Add Spark Structured Streaming parsing, watermarking, windowed metrics,
+1. Completed: validate the Phase 1 Compose acceptance suite and close local
+   environment defects.
+2. Software complete: the Raspberry Pi agent and bounded SQLite outbox pass
+   Python 3.12 and local recovery acceptance. Physical Pi Zero W/Pi 3
+   installation and resource validation remain.
+3. Next: add Spark Structured Streaming parsing, watermarking, windowed metrics,
    checkpoints, curated PostgreSQL output, and progress metrics.
 4. Add deterministic cross-agent incident rules, evidence, confidence, and the
    candidate-to-resolved state machine.

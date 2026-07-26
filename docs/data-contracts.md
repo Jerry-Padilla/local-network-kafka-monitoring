@@ -8,8 +8,10 @@ Every event includes `event_id`, `event_type`, `schema_version`, `agent_id`,
 
 - IDs are UUID strings. `event_id` is the global deduplication key.
 - Timestamps must be timezone-aware UTC ISO 8601. `event_time` describes when
-  the agent observed the condition; `published_time` describes serialization.
-- Sequence numbers are nonnegative and scoped to an agent process.
+  the agent observed the condition; `published_time` describes serialization
+  into the local outbox, not the later Kafka acknowledgement time.
+- Sequence numbers are nonnegative. The physical agent persists its sequence
+  in SQLite across restarts; simulator sequences are scoped to a run.
 - `schema_version` is an integer wire-contract version. Phase 1 accepts only 1.
 - `source_version` is the semantic version of the producing software.
 - `correlation_id` is explicitly nullable; other fields are nullable only where
@@ -43,6 +45,11 @@ anomalies are not data-quality failures.
 The JSON schemas in `schemas/` are the language-neutral contract. Pydantic
 models in `packages/contracts` are the Python implementation. Contract tests
 validate representative producer output against both.
+
+Phase 2 collectors use allowed additive fields for target address, Wi-Fi
+interface, protected SSID/BSSID, frequency, and link bitrate. These fields
+remain optional so Phase 1 consumers continue to accept the same version 1
+contract.
 
 ## Topic routing
 

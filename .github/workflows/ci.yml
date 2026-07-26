@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config --quiet
-      - run: docker compose build event-ingestor simulator tests
+      - run: docker compose build event-ingestor network-agent simulator tests
 
   integration:
     runs-on: ubuntu-latest

@@ -35,6 +35,23 @@ class PostgresEventRepository:
     def close(self) -> None:
         self._pool.close()
 
+    def load_reference_ids(self) -> tuple[set[str], set[str]]:
+        """Load enabled agent and endpoint allowlists from PostgreSQL."""
+        with self._pool.connection() as connection:
+            agents = {
+                str(row[0])
+                for row in connection.execute(
+                    "SELECT agent_id FROM agents WHERE enabled = TRUE"
+                ).fetchall()
+            }
+            endpoints = {
+                str(row[0])
+                for row in connection.execute(
+                    "SELECT endpoint_id FROM endpoints WHERE enabled = TRUE"
+                ).fetchall()
+            }
+        return agents, endpoints
+
     def persist_event(self, event: Event, source: SourceRecord) -> None:
         payload = event.model_dump(mode="json")
         with self._pool.connection() as connection, connection.transaction():

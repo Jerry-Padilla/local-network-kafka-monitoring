@@ -34,13 +34,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "healthcheck":
             return 0 if repository.healthcheck() else 1
 
+        known_agents, known_endpoints = repository.load_reference_ids()
         publisher = SynchronousKafkaPublisher(
             bootstrap_servers=config.bootstrap_servers,
             client_id=f"{config.client_id}-output",
             delivery_timeout_seconds=config.delivery_timeout_seconds,
         )
         try:
-            processor = EventProcessor(repository, publisher)
+            processor = EventProcessor(
+                repository,
+                publisher,
+                known_agents=known_agents,
+                known_endpoints=known_endpoints,
+            )
             consumer = IngestionConsumer(config, processor)
             consumer.install_signal_handlers()
             consumer.run()
