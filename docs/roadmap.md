@@ -5,9 +5,10 @@
 2. Software complete: the Raspberry Pi agent and bounded SQLite outbox pass
    Python 3.12 and local recovery acceptance. Physical Pi Zero W/Pi 3
    installation and resource validation remain.
-3. Next: add Spark Structured Streaming parsing, watermarking, windowed metrics,
-   checkpoints, curated PostgreSQL output, and progress metrics.
-4. Add deterministic cross-agent incident rules, evidence, confidence, and the
+3. Completed: Spark Structured Streaming parsing, watermarking, windowed
+   metrics, checkpoints, curated PostgreSQL output, invalid evidence, and
+   progress metrics pass local acceptance.
+4. Next: add deterministic cross-agent incident rules, evidence, confidence, and the
    candidate-to-resolved state machine.
 5. Add dimensional facts/dimensions, rerunnable batch jobs, Power BI views,
    Prometheus, and provisioned Grafana dashboards.

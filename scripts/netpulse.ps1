@@ -5,7 +5,7 @@ param(
         "setup", "lint", "format", "typecheck", "test", "test-unit",
         "test-integration", "up", "down", "reset", "logs", "demo", "verify",
         "kafka-topics", "db-shell", "config", "agent-build", "agent-validate",
-        "agent-test"
+        "agent-test", "stream-build", "stream-run", "stream-once", "stream-verify"
     )]
     [string]$Command = "config"
 )
@@ -94,5 +94,40 @@ switch ($Command) {
     }
     "agent-test" {
         Invoke-DockerCompose @("--profile", "test", "run", "--rm", "tests", "-p", "no:cacheprovider", "services/network-agent/tests")
+    }
+    "stream-build" {
+        Invoke-DockerCompose @("build", "stream-processor")
+    }
+    "stream-run" {
+        Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
+        Invoke-DockerCompose @("--profile", "streaming", "up", "-d", "--build", "stream-processor")
+    }
+    "stream-once" {
+        Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
+        Invoke-DockerCompose @(
+            "--profile", "streaming", "run", "--rm",
+            "-e", "NETPULSE_STREAM_TRIGGER_MODE=available-now",
+            "stream-processor"
+        )
+    }
+    "stream-verify" {
+        Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
+        Invoke-DockerCompose @(
+            "--profile", "demo", "run", "--rm", "simulator",
+            "run", "--scenario", "healthy", "--duration", "2", "--seed", "42"
+        )
+        Invoke-DockerCompose @(
+            "--profile", "demo", "run", "--rm", "simulator",
+            "run", "--scenario", "malformed-events", "--duration", "1", "--seed", "43"
+        )
+        Invoke-DockerCompose @(
+            "--profile", "streaming", "run", "--rm",
+            "-e", "NETPULSE_STREAM_TRIGGER_MODE=available-now",
+            "stream-processor"
+        )
+        Invoke-DockerCompose @(
+            "--profile", "test", "run", "--rm", "--entrypoint", "python",
+            "tests", "scripts/verify_streaming.py"
+        )
     }
 }

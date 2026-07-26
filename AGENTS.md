@@ -5,8 +5,9 @@
 NetPulse is a portfolio-oriented, multi-agent home-network observability
 prototype. Phase 1 implements a local at-least-once ingestion path from a
 deterministic simulator through Kafka to PostgreSQL. Phase 2 adds the
-lightweight Raspberry Pi agent and durable SQLite outbox. Later phases add
-Spark, incident classification, analytics, dashboards, API, and Kubernetes.
+lightweight Raspberry Pi agent and durable SQLite outbox. Phase 3 adds Spark
+event-time curation. Later phases add incident classification, analytics,
+dashboards, API, and Kubernetes.
 
 ## Service map
 
@@ -16,6 +17,8 @@ Spark, incident classification, analytics, dashboards, API, and Kubernetes.
   and PostgreSQL persistence.
 - `services/network-agent`: configurable collectors, privacy controls,
   SQLite outbox, and acknowledged Kafka delivery.
+- `services/stream-processor`: Spark parsing, watermarks, checkpointing,
+  windowed metrics, invalid evidence, and PostgreSQL curation.
 - `database`: Alembic migrations and database tests.
 - `schemas`: versioned JSON Schema contracts.
 - `scripts`: cross-platform developer and stack-verification commands.
@@ -44,6 +47,7 @@ Spark, incident classification, analytics, dashboards, API, and Kubernetes.
 - `make typecheck` / `./scripts/netpulse.ps1 typecheck`
 - `make test` / `./scripts/netpulse.ps1 test`
 - `make test-integration` / `./scripts/netpulse.ps1 test-integration`
+- `make stream-verify` / `./scripts/netpulse.ps1 stream-verify`
 - `make up`, `make demo`, `make verify`, `make down`
 - Windows equivalents use `./scripts/netpulse.ps1 <command>`.
 

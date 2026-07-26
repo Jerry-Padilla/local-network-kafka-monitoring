@@ -12,3 +12,10 @@ services:
     volumes:
       - ./services/simulator/src:/app/services/simulator/src:ro
       - ./packages/contracts/src:/app/packages/contracts/src:ro
+
+  stream-processor:
+    environment:
+      NETPULSE_LOG_LEVEL: DEBUG
+    volumes:
+      - ./services/stream-processor/src:/app/services/stream-processor/src:ro
+      - ./packages/contracts/src:/app/packages/contracts/src:ro

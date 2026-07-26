@@ -6,7 +6,8 @@ incident logic can distinguish probable local wireless degradation from router,
 ISP, DNS, and external-service symptoms.
 
 Phase 1 implements the validated local ingestion foundation. Phase 2 adds the
-lightweight agent software and its durable local queue:
+lightweight agent software and its durable local queue. Phase 3 adds event-time
+streaming curation:
 
 ```mermaid
 flowchart LR
@@ -14,10 +15,12 @@ flowchart LR
     O -->|acknowledged delivery| K[(Kafka KRaft)]
     S[Deterministic two-agent simulator] -->|versioned JSON, agent_id key| K[(Kafka KRaft)]
     K --> C[Event ingestor]
+    K --> T[Spark Structured Streaming]
     C -->|valid and deduplicated| P[(PostgreSQL)]
     C -->|validated measurements| V[valid.v1 topic]
     C -->|invalid source record| D[dead-letter.v1 topic]
     C -->|failure evidence| P
+    T -->|event-time windows + invalid evidence| P
 ```
 
 This is a small local test bed for data-engineering concepts, not an ISP-grade
@@ -39,10 +42,13 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
   exponential backoff, and marks delivery only after Kafka acknowledgement.
 - SSID/BSSID omission or hashing, target-address omission, systemd service
   assets, and mock-based hardware/error tests.
+- Spark 4.1.2 raw-measurement parsing, a 15-minute watermark, 1/5/15-minute and
+  daily windows, approximate percentiles, persistent checkpoints, structured
+  progress logs, replay-safe PostgreSQL aggregates, and invalid source evidence.
 
 Physical Pi Zero W/Pi 3 installation and resource measurements have not been
-executed. Spark, incident classification, dashboards, query APIs, Kubernetes,
-and measured capacity results are intentionally not implemented yet.
+executed. Incident classification, dashboards, query APIs, Kubernetes, and
+measured capacity results are intentionally not implemented yet.
 
 ## Quick start
 
@@ -91,6 +97,10 @@ identifiers.
 | Build the agent image | `make agent-build` | `./scripts/netpulse.ps1 agent-build` |
 | Validate sample agent config | `make agent-validate` | `./scripts/netpulse.ps1 agent-validate` |
 | Run agent tests | `make agent-test` | `./scripts/netpulse.ps1 agent-test` |
+| Build Spark processor | `make stream-build` | `./scripts/netpulse.ps1 stream-build` |
+| Run Spark continuously | `make stream-run` | `./scripts/netpulse.ps1 stream-run` |
+| Process available Kafka data | `make stream-once` | `./scripts/netpulse.ps1 stream-once` |
+| Verify streaming invariants | `make stream-verify` | `./scripts/netpulse.ps1 stream-verify` |
 | Stop containers | `make down` | `./scripts/netpulse.ps1 down` |
 
 `reset` additionally deletes the named Kafka and PostgreSQL volumes and is
@@ -128,12 +138,19 @@ The agent first stores every event in SQLite. Kafka callback success marks it
 delivered; failure leaves it queued with retry metadata. Collection continues
 on separate worker threads while Kafka is unavailable.
 
+Spark separately consumes raw measurements with persistent checkpoints.
+Curated window rows and rejected source coordinates use PostgreSQL conflict
+keys, but Kafka, Spark state, and PostgreSQL do not share an atomic transaction.
+This remains replay-safe at-least-once processing rather than an end-to-end
+exactly-once claim.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md)
 - [Data contracts](docs/data-contracts.md)
 - [Local deployment](docs/deployment.md)
 - [Raspberry Pi setup](docs/raspberry-pi-setup.md)
+- [Spark Structured Streaming](docs/streaming.md)
 - [Failure testing](docs/failure-testing.md)
 - [Security and privacy](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -143,6 +160,8 @@ on separate worker threads while Kafka is unavailable.
 - [Phase 1 completion report](docs/phase1-completion-report.md)
 - [Phase 2 implementation checklist](docs/phase2-implementation-plan.md)
 - [Phase 2 software completion report](docs/phase2-completion-report.md)
+- [Phase 3 implementation checklist](docs/phase3-implementation-plan.md)
+- [Phase 3 completion report](docs/phase3-completion-report.md)
 
 ## Portfolio description
 
@@ -155,9 +174,12 @@ on separate worker threads while Kafka is unavailable.
   compatibility, invalid-event evidence, and event-ID deduplication.
 - Implemented a configurable headless measurement agent with privacy controls,
   mockable Linux collectors, and an acknowledgement-gated SQLite outbox.
+- Built a Spark Structured Streaming curation path with event-time watermarks,
+  four aggregate windows, checkpoint recovery, invalid-record evidence, and
+  replay-safe PostgreSQL upserts.
 
-Only validated Phase 1 and implemented Phase 2 software capabilities are
-claimed here; physical Raspberry Pi validation remains outstanding.
+Only validated Phase 1, Phase 2 software, and Phase 3 streaming capabilities
+are claimed here; physical Raspberry Pi validation remains outstanding.
 
 ## License
 

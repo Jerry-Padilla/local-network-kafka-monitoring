@@ -76,6 +76,29 @@ case "$command" in
     "${compose[@]}" --profile test run --rm tests -p no:cacheprovider \
       services/network-agent/tests
     ;;
+  stream-build)
+    "${compose[@]}" build stream-processor
+    ;;
+  stream-run)
+    "${compose[@]}" up -d --build --wait event-ingestor
+    "${compose[@]}" --profile streaming up -d --build stream-processor
+    ;;
+  stream-once)
+    "${compose[@]}" up -d --build --wait event-ingestor
+    "${compose[@]}" --profile streaming run --rm \
+      -e NETPULSE_STREAM_TRIGGER_MODE=available-now stream-processor
+    ;;
+  stream-verify)
+    "${compose[@]}" up -d --build --wait event-ingestor
+    "${compose[@]}" --profile demo run --rm simulator \
+      run --scenario healthy --duration 2 --seed 42
+    "${compose[@]}" --profile demo run --rm simulator \
+      run --scenario malformed-events --duration 1 --seed 43
+    "${compose[@]}" --profile streaming run --rm \
+      -e NETPULSE_STREAM_TRIGGER_MODE=available-now stream-processor
+    "${compose[@]}" --profile test run --rm --entrypoint python \
+      tests scripts/verify_streaming.py
+    ;;
   *)
     echo "Unknown command: $command" >&2
     exit 2

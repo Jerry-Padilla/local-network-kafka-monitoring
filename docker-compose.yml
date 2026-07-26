@@ -137,6 +137,38 @@ services:
     restart: unless-stopped
     networks: [backend]
 
+  stream-processor:
+    profiles: [streaming]
+    build:
+      context: .
+      dockerfile: services/stream-processor/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+      NETPULSE_STREAM_SOURCE_TOPIC: network.measurements.raw.v1
+      NETPULSE_STREAM_STARTING_OFFSETS: ${NETPULSE_STREAM_STARTING_OFFSETS:-earliest}
+      NETPULSE_STREAM_FAIL_ON_DATA_LOSS: "true"
+      NETPULSE_STREAM_CHECKPOINT_ROOT: /var/lib/netpulse-streaming/checkpoints
+      NETPULSE_STREAM_WATERMARK_DELAY: ${NETPULSE_STREAM_WATERMARK_DELAY:-15 minutes}
+      NETPULSE_STREAM_TRIGGER_MODE: ${NETPULSE_STREAM_TRIGGER_MODE:-processing-time}
+      NETPULSE_STREAM_TRIGGER_INTERVAL: ${NETPULSE_STREAM_TRIGGER_INTERVAL:-10 seconds}
+      NETPULSE_STREAM_SHUFFLE_PARTITIONS: ${NETPULSE_STREAM_SHUFFLE_PARTITIONS:-6}
+      NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+    volumes:
+      - spark-checkpoints:/var/lib/netpulse-streaming/checkpoints
+      - spark-ivy-cache:/var/lib/netpulse-streaming/.ivy2
+    restart: unless-stopped
+    networks: [backend]
+
   tests:
     profiles: [test]
     build:
@@ -157,3 +189,5 @@ volumes:
   agent-outbox:
   kafka-data:
   postgres-data:
+  spark-checkpoints:
+  spark-ivy-cache:

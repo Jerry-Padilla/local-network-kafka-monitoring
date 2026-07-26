@@ -79,3 +79,25 @@ agent.
 Use an appropriately scoped PowerShell execution policy approved by your
 organization, or run the equivalent explicit Docker Compose commands documented
 in the scripts. Do not weaken machine-wide policy solely for this project.
+
+## Spark cannot write its Ivy cache
+
+The current image pre-creates `.ivy2/cache` and `.ivy2/jars` for the non-root
+UID. If a cache volume was created by an older image, stop Spark, inspect the
+exact Compose-labelled `netpulse_spark-ivy-cache` volume, remove only that
+disposable cache, rebuild `stream-processor`, and rerun. Do not remove
+`spark-checkpoints` unless a deliberate replay is intended.
+
+## Spark checkpoint restart rejects a changed query
+
+Checkpoint metadata is coupled to the streaming query plan. Restore the
+compatible code or start a deliberately new checkpoint after documenting the
+replay boundary. PostgreSQL aggregate and reject conflict keys make database
+writes idempotent, but deleting checkpoints changes Kafka replay behavior.
+
+## Spark has no rows to verify
+
+Run `stream-verify`, not only `stream-once`, on an empty stack. The verification
+workflow publishes deterministic valid and malformed measurements before
+starting Spark. Confirm Maven Central is reachable on the first run and inspect
+the structured `streaming_progress` logs.

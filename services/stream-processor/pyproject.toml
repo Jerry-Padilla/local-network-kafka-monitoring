@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netpulse-stream-processor"
+version = "0.3.0"
+description = "Spark Structured Streaming aggregation service for NetPulse"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "netpulse-contracts==0.1.0",
+  "psycopg[binary]==3.2.6",
+  "pydantic==2.11.1",
+  "pyspark==4.1.2",
+  "structlog==25.2.0",
+]
+
+[project.scripts]
+netpulse-stream-processor = "netpulse_streaming.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netpulse_streaming"]

@@ -1,7 +1,7 @@
 [project]
 name = "netpulse-development"
 version = "0.1.0"
-description = "Development tooling for the NetPulse Phase 1 monorepo"
+description = "Development tooling for the NetPulse observability monorepo"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
@@ -13,6 +13,7 @@ pythonpath = [
   "services/network-agent/src",
   "services/simulator/src",
   "services/event-ingestor/src",
+  "services/stream-processor/src",
 ]
 markers = [
   "integration: requires the Docker Compose stack",
@@ -20,7 +21,13 @@ markers = [
 
 [tool.coverage.run]
 branch = true
-source = ["netpulse_agent", "netpulse_contracts", "netpulse_simulator", "netpulse_ingestion"]
+source = [
+  "netpulse_agent",
+  "netpulse_contracts",
+  "netpulse_simulator",
+  "netpulse_ingestion",
+  "netpulse_streaming",
+]
 omit = ["**/__main__.py"]
 
 [tool.coverage.report]
@@ -50,7 +57,13 @@ mypy_path = [
   "services/simulator/src",
   "services/event-ingestor/src",
 ]
-packages = ["netpulse_agent", "netpulse_contracts", "netpulse_simulator", "netpulse_ingestion"]
+packages = [
+  "netpulse_agent",
+  "netpulse_contracts",
+  "netpulse_simulator",
+  "netpulse_ingestion",
+  "netpulse_streaming",
+]
 exclude = ["Microsoft"]
 plugins = ["pydantic.mypy"]
 

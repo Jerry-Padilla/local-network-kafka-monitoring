@@ -12,6 +12,9 @@
 - The event ingestor validates untrusted records, checks configured agent and
   endpoint references, persists operational data, publishes validated
   measurements or dead letters, and manually commits source offsets.
+- The Spark processor independently consumes raw measurements, separates
+  invalid rows, applies event-time watermarks, maintains four window sizes,
+  checkpoints state, and upserts curated PostgreSQL aggregates.
 - PostgreSQL retains a JSONB copy of valid input plus typed operational tables.
   Alembic owns schema evolution.
 
@@ -23,6 +26,7 @@ sequenceDiagram
     participant I as Event ingestor
     participant P as PostgreSQL
     participant O as Valid or DLQ topic
+    participant S as Spark streaming
 
     A->>Q: insert validated event
     Q->>K: produce(key=agent_id, original JSON)
@@ -41,6 +45,10 @@ sequenceDiagram
     end
     O-->>I: Kafka acknowledgement
     I->>K: commit source offset
+    K->>S: raw measurement offsets
+    S->>S: parse + watermark + window
+    S->>P: upsert aggregates or stream rejects
+    S->>S: checkpoint offsets and state
 ```
 
 If processing fails, the consumer seeks to the same offset and retries with
@@ -65,7 +73,8 @@ within one key/partition.
 | `network.dead-letter.v1` | Invalid input with source coordinates | 30 days |
 | `network.processing-metrics.v1` | Reserved for pipeline metrics | 7 days |
 
-The ingestor group is `netpulse-ingestion-v1`. Replays use a new explicit
+The ingestor group is `netpulse-ingestion-v1`. Spark uses checkpoint-owned
+consumer progress with a `netpulse-window-metrics-v1` group prefix. Replays use a new explicit
 consumer group or reset this group’s offsets after confirming downstream
 deduplication behavior.
 
@@ -84,11 +93,18 @@ erDiagram
     RAW_EVENTS ||--o| AGENT_HEARTBEATS : specializes
     ENDPOINTS ||--o{ NETWORK_MEASUREMENTS : targets
     ENDPOINTS ||--o{ SERVICE_CHECKS : targets
+    AGENTS ||--o{ NETWORK_WINDOW_METRICS : summarizes
+    ENDPOINTS ||--o{ NETWORK_WINDOW_METRICS : groups
 ```
 
 `processing_failures` stores original bytes, validation details, attempts, and
 dead-letter publication time. It deliberately remains separate from valid raw
 events.
+
+`network_window_metrics` uses the window bounds, window size, agent, endpoint,
+and measurement type as its replay-safe primary key.
+`stream_processing_failures` uses source topic/partition/offset uniqueness.
+`streaming_query_batches` records completed sink batches.
 
 ## Reliability boundary
 
@@ -98,7 +114,12 @@ idempotent; future Spark and classifier consumers must deduplicate `event_id`.
 Producer idempotence reduces duplicate retries within one producer session but
 does not change the end-to-end guarantee.
 
-The physical agent adds a second reliability boundary before Kafka. Collection
+Spark checkpoints make its Kafka progress and state restartable, while
+PostgreSQL conflict keys make replayed sink batches idempotent. They are not one
+atomic transaction, so the repository does not extend Spark's checkpoint
+guarantees into an unsupported end-to-end exactly-once claim.
+
+The physical agent adds another reliability boundary before Kafka. Collection
 continues while Kafka is unavailable, pending events retain their original
 timestamps, and a delivery acknowledgement can be lost during a crash. This is
 also at-least-once delivery; downstream `event_id` deduplication remains

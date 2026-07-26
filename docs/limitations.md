@@ -13,8 +13,13 @@
   Pi 3.
 - The default backend Kafka listener is loopback-only. A Pi requires an
   explicitly secured private-LAN listener; this is not enabled automatically.
+- Spark runs as a local two-thread driver and is not a distributed scale claim.
+  Its approximate percentiles use accuracy 10,000, and its bounded driver sink
+  is intended for aggregate rather than raw-event cardinality.
+- The Phase 3 job currently aggregates network measurements only. Service
+  checks, speed tests, and heartbeats remain in operational tables.
 - Kafka consumer-lag, infrastructure metrics, Grafana, and alerting are later
   phases.
 - Static anomaly scoring and incident classification are not implemented.
-- No Spark, warehouse, Power BI views, API, Kubernetes, RAG, or MCP layer exists.
+- No warehouse, Power BI views, API, Kubernetes, RAG, or MCP layer exists.
 - No throughput, recovery-time, or capacity figures are claimed.

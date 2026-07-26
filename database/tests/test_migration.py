@@ -20,3 +20,15 @@ def test_phase2_migration_registers_second_external_endpoint() -> None:
     assert 'down_revision = "0001"' in migration
     assert "'public-dns-b'" in migration
     assert "ON CONFLICT (endpoint_id) DO NOTHING" in migration
+
+
+def test_phase3_migration_has_replay_safe_streaming_keys_and_ranges() -> None:
+    migration = (
+        Path(__file__).parents[1] / "migrations" / "versions" / "0003_phase3_streaming_metrics.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'down_revision = "0002"' in migration
+    assert "network_window_metrics" in migration
+    assert "stream_processing_failures" in migration
+    assert "UNIQUE (source_topic, source_partition, source_offset)" in migration
+    assert "window_size_seconds IN (60, 300, 900, 86400)" in migration

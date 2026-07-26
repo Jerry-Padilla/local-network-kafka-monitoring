@@ -22,6 +22,8 @@ Persistent volumes are:
 
 - `netpulse_kafka-data`
 - `netpulse_postgres-data`
+- `netpulse_spark-checkpoints`
+- `netpulse_spark-ivy-cache`
 
 Normal `down` preserves them. `reset` removes them and all local demo data.
 
@@ -37,6 +39,9 @@ Normal `down` preserves them. `reset` removes them and all local demo data.
 ./scripts/netpulse.ps1 verify
 ./scripts/netpulse.ps1 agent-validate
 ./scripts/netpulse.ps1 agent-test
+./scripts/netpulse.ps1 stream-build
+./scripts/netpulse.ps1 stream-once
+./scripts/netpulse.ps1 stream-verify
 ```
 
 The verification command requires both agents, typed measurements, no duplicate
@@ -47,6 +52,12 @@ The opt-in `agent` profile is a local software harness, not the Raspberry Pi
 deployment path. It mounts `config/agent.example.yaml` and a persistent
 `agent-outbox` volume. Build and validate it with `agent-build` and
 `agent-validate`; use the systemd instructions for physical devices.
+
+The opt-in `streaming` profile runs PySpark 4.1.2 on Java 17 and Python 3.12.
+`stream-run` starts the continuous query. `stream-once` processes currently
+available offsets and exits. `stream-verify` publishes deterministic records,
+runs `available-now`, and checks curated/reject invariants. The first Spark run
+downloads pinned connector jars from Maven Central into the Ivy cache volume.
 
 ## Configuration
 
@@ -61,6 +72,12 @@ Compose reads `.env`. Services use:
 - `NETPULSE_DELIVERY_TIMEOUT_SECONDS`
 - `NETPULSE_LOG_LEVEL`
 - `NETPULSE_SIMULATOR_SEED`
+- `NETPULSE_STREAM_STARTING_OFFSETS`
+- `NETPULSE_STREAM_WATERMARK_DELAY`
+- `NETPULSE_STREAM_TRIGGER_MODE`
+- `NETPULSE_STREAM_TRIGGER_INTERVAL`
+- `NETPULSE_STREAM_SHUFFLE_PARTITIONS`
+- `NETPULSE_STREAM_MAXIMUM_OUTPUT_ROWS`
 
 The application connects as limited role `netpulse_app`; only migrations use
 the database administrator.
