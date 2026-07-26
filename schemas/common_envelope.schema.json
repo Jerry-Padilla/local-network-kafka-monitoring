@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netpulse.local/schemas/common_envelope.schema.json",
+  "title": "NetPulse common event envelope v1",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "agent_id",
+    "agent_role",
+    "event_time",
+    "published_time",
+    "sequence_number",
+    "correlation_id",
+    "source_version"
+  ],
+  "properties": {
+    "event_id": {"type": "string", "format": "uuid"},
+    "event_type": {"type": "string", "minLength": 1},
+    "schema_version": {"const": 1},
+    "agent_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]+$",
+      "maxLength": 128
+    },
+    "agent_role": {"enum": ["wired_reference", "wifi_observer"]},
+    "event_time": {"type": "string", "format": "date-time", "pattern": "(Z|\\+00:00)$"},
+    "published_time": {"type": "string", "format": "date-time", "pattern": "(Z|\\+00:00)$"},
+    "sequence_number": {"type": "integer", "minimum": 0},
+    "correlation_id": {
+      "oneOf": [{"type": "string", "format": "uuid"}, {"type": "null"}]
+    },
+    "source_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$"
+    }
+  },
+  "additionalProperties": true
+}

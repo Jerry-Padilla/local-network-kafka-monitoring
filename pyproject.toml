@@ -1,0 +1,57 @@
+[project]
+name = "netpulse-development"
+version = "0.1.0"
+description = "Development tooling for the NetPulse Phase 1 monorepo"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers --import-mode=importlib"
+testpaths = ["packages", "services", "tests"]
+pythonpath = [
+  "packages/contracts/src",
+  "services/simulator/src",
+  "services/event-ingestor/src",
+]
+markers = [
+  "integration: requires the Docker Compose stack",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["netpulse_contracts", "netpulse_simulator", "netpulse_ingestion"]
+omit = ["**/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["Microsoft"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF", "SIM", "C4"]
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
+"**/tests/**/*.py" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = [
+  "packages/contracts/src",
+  "services/simulator/src",
+  "services/event-ingestor/src",
+]
+packages = ["netpulse_contracts", "netpulse_simulator", "netpulse_ingestion"]
+exclude = ["Microsoft"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["confluent_kafka.*"]
+ignore_missing_imports = true

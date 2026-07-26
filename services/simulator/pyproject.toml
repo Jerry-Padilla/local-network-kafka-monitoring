@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netpulse-simulator"
+version = "0.1.0"
+description = "Deterministic multi-agent telemetry simulator for NetPulse"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "confluent-kafka==2.8.2",
+  "netpulse-contracts==0.1.0",
+  "pydantic==2.11.1",
+  "structlog==25.2.0",
+]
+
+[project.scripts]
+netpulse-simulator = "netpulse_simulator.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netpulse_simulator"]

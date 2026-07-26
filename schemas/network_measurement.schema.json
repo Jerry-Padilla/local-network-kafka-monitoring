@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netpulse.local/schemas/network_measurement.schema.json",
+  "title": "NetPulse network measurement v1",
+  "allOf": [
+    {"$ref": "common_envelope.schema.json"},
+    {
+      "type": "object",
+      "required": [
+        "measurement_type",
+        "target_id",
+        "success",
+        "packet_loss_pct"
+      ],
+      "properties": {
+        "event_type": {"const": "network.measurement"},
+        "measurement_type": {
+          "enum": ["router_ping", "external_ping", "wifi_diagnostics"]
+        },
+        "target_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "success": {"type": "boolean"},
+        "latency_ms": {"type": ["number", "null"], "minimum": 0},
+        "packet_loss_pct": {"type": "number", "minimum": 0, "maximum": 100},
+        "jitter_ms": {"type": ["number", "null"], "minimum": 0},
+        "signal_dbm": {
+          "type": ["number", "null"],
+          "minimum": -120,
+          "maximum": 0
+        },
+        "connected": {"type": ["boolean", "null"]},
+        "error_class": {"type": ["string", "null"], "maxLength": 128},
+        "error_message": {"type": ["string", "null"], "maxLength": 1024}
+      }
+    }
+  ]
+}

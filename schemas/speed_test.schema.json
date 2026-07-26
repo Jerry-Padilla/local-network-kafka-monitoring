@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netpulse.local/schemas/speed_test.schema.json",
+  "title": "NetPulse speed test v1",
+  "allOf": [
+    {"$ref": "common_envelope.schema.json"},
+    {
+      "type": "object",
+      "required": [
+        "provider",
+        "success",
+        "duration_ms",
+        "bytes_transferred"
+      ],
+      "properties": {
+        "event_type": {"const": "network.speed_test"},
+        "provider": {"type": "string", "minLength": 1, "maxLength": 128},
+        "server_id": {"type": ["string", "null"]},
+        "success": {"type": "boolean"},
+        "download_mbps": {"type": ["number", "null"], "minimum": 0},
+        "upload_mbps": {"type": ["number", "null"], "minimum": 0},
+        "latency_ms": {"type": ["number", "null"], "minimum": 0},
+        "duration_ms": {"type": "number", "minimum": 0},
+        "bytes_transferred": {"type": "integer", "minimum": 0},
+        "error_class": {"type": ["string", "null"], "maxLength": 128}
+      }
+    }
+  ]
+}

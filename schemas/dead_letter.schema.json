@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netpulse.local/schemas/dead_letter.schema.json",
+  "title": "NetPulse dead-letter record v1",
+  "type": "object",
+  "required": [
+    "dead_letter_id",
+    "failed_time",
+    "source_topic",
+    "source_partition",
+    "source_offset",
+    "error_class",
+    "error_message",
+    "validation_errors",
+    "original_payload"
+  ],
+  "properties": {
+    "dead_letter_id": {"type": "string", "format": "uuid"},
+    "failed_time": {"type": "string", "format": "date-time"},
+    "source_topic": {"type": "string"},
+    "source_partition": {"type": "integer", "minimum": 0},
+    "source_offset": {"type": "integer", "minimum": 0},
+    "error_class": {"type": "string"},
+    "error_message": {"type": "string"},
+    "validation_errors": {"type": "array", "items": {"type": "object"}},
+    "original_payload": {"type": "string"}
+  },
+  "additionalProperties": false
+}

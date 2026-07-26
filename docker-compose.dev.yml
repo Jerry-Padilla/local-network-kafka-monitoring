@@ -1,0 +1,14 @@
+services:
+  event-ingestor:
+    environment:
+      NETPULSE_LOG_LEVEL: DEBUG
+    volumes:
+      - ./services/event-ingestor/src:/app/services/event-ingestor/src:ro
+      - ./packages/contracts/src:/app/packages/contracts/src:ro
+
+  simulator:
+    environment:
+      NETPULSE_LOG_LEVEL: DEBUG
+    volumes:
+      - ./services/simulator/src:/app/services/simulator/src:ro
+      - ./packages/contracts/src:/app/packages/contracts/src:ro

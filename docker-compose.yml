@@ -1,0 +1,144 @@
+name: netpulse
+
+services:
+  postgres:
+    image: postgres:17.10-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-netpulse}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-netpulse_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-change-me-local-app}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_ADMIN_USER:-netpulse_admin} -d ${POSTGRES_DB:-netpulse}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [backend]
+
+  kafka:
+    image: apache/kafka:4.2.0
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:${KAFKA_EXTERNAL_PORT:-29092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+    ports:
+      - "127.0.0.1:${KAFKA_EXTERNAL_PORT:-29092}:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 18
+      start_period: 15s
+    restart: unless-stopped
+    networks: [backend]
+
+  topic-init:
+    image: apache/kafka:4.2.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - ./scripts/create_topics.sh:/scripts/create_topics.sh:ro
+    entrypoint: ["/bin/bash", "/scripts/create_topics.sh"]
+    restart: "no"
+    networks: [backend]
+
+  migrate:
+    build:
+      context: .
+      dockerfile: services/event-ingestor/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NETPULSE_ADMIN_DATABASE_URL: postgresql+psycopg://${POSTGRES_ADMIN_USER:-netpulse_admin}:${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}@postgres:5432/${POSTGRES_DB:-netpulse}
+    entrypoint: ["alembic", "-c", "database/alembic.ini"]
+    command: ["upgrade", "head"]
+    restart: "no"
+    networks: [backend]
+
+  event-ingestor:
+    build:
+      context: .
+      dockerfile: services/event-ingestor/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+      NETPULSE_CONSUMER_GROUP: ${NETPULSE_CONSUMER_GROUP:-netpulse-ingestion-v1}
+      NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    networks: [backend]
+
+  simulator:
+    profiles: [demo]
+    build:
+      context: .
+      dockerfile: services/simulator/Dockerfile
+    depends_on:
+      event-ingestor:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      NETPULSE_SIMULATOR_SEED: ${NETPULSE_SIMULATOR_SEED:-42}
+      NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+    networks: [backend]
+
+  tests:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: tests/Dockerfile
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+    volumes:
+      - .:/workspace
+    networks: [backend]
+
+networks:
+  backend:
+    internal: false
+
+volumes:
+  kafka-data:
+  postgres-data:

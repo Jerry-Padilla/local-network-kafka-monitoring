@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netpulse-event-ingestor"
+version = "0.1.0"
+description = "Replay-safe NetPulse Kafka-to-PostgreSQL ingestion service"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "alembic==1.15.2",
+  "confluent-kafka==2.8.2",
+  "netpulse-contracts==0.1.0",
+  "psycopg[binary,pool]==3.2.6",
+  "pydantic==2.11.1",
+  "SQLAlchemy==2.0.40",
+  "structlog==25.2.0",
+]
+
+[project.scripts]
+netpulse-ingestor = "netpulse_ingestion.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netpulse_ingestion"]

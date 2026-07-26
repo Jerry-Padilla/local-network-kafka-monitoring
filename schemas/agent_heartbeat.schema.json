@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netpulse.local/schemas/agent_heartbeat.schema.json",
+  "title": "NetPulse agent heartbeat v1",
+  "allOf": [
+    {"$ref": "common_envelope.schema.json"},
+    {
+      "type": "object",
+      "required": [
+        "hostname",
+        "agent_version",
+        "os_version",
+        "uptime_seconds",
+        "cpu_utilization_pct",
+        "memory_utilization_pct",
+        "disk_utilization_pct",
+        "network_interfaces",
+        "collection_errors",
+        "local_queue_depth"
+      ],
+      "properties": {
+        "event_type": {"const": "network.agent_heartbeat"},
+        "hostname": {"type": "string", "minLength": 1},
+        "agent_version": {"type": "string"},
+        "device_model": {"type": ["string", "null"]},
+        "os_version": {"type": "string", "minLength": 1},
+        "uptime_seconds": {"type": "number", "minimum": 0},
+        "cpu_temperature_c": {
+          "type": ["number", "null"],
+          "minimum": -40,
+          "maximum": 150
+        },
+        "cpu_utilization_pct": {"type": "number", "minimum": 0, "maximum": 100},
+        "memory_utilization_pct": {"type": "number", "minimum": 0, "maximum": 100},
+        "disk_utilization_pct": {"type": "number", "minimum": 0, "maximum": 100},
+        "network_interfaces": {"type": "array", "items": {"type": "string"}},
+        "collection_errors": {"type": "array", "items": {"type": "string"}},
+        "local_queue_depth": {"type": "integer", "minimum": 0}
+      }
+    }
+  ]
+}

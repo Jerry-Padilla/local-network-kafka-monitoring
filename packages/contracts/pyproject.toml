@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netpulse-contracts"
+version = "0.1.0"
+description = "Versioned event contracts shared by NetPulse services"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "jsonschema==4.23.0",
+  "pydantic==2.11.1",
+  "structlog==25.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netpulse_contracts"]

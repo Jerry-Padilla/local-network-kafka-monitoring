@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netpulse.local/schemas/network_incident.schema.json",
+  "title": "NetPulse network incident v1",
+  "allOf": [
+    {"$ref": "common_envelope.schema.json"},
+    {
+      "type": "object",
+      "required": [
+        "incident_id",
+        "incident_type",
+        "start_time",
+        "end_time",
+        "status",
+        "severity",
+        "confidence_score",
+        "affected_agents",
+        "affected_endpoints",
+        "evidence",
+        "rule_version",
+        "peak_latency_ms",
+        "maximum_packet_loss_pct",
+        "duration_ms",
+        "summary",
+        "recommended_action"
+      ],
+      "properties": {
+        "event_type": {"const": "network.incident"},
+        "incident_id": {"type": "string", "format": "uuid"},
+        "incident_type": {
+          "enum": [
+            "wifi_degradation",
+            "wifi_outage",
+            "router_unavailable",
+            "isp_outage",
+            "dns_failure",
+            "external_service_failure",
+            "high_latency",
+            "high_packet_loss",
+            "agent_offline",
+            "unknown_network_incident"
+          ]
+        },
+        "start_time": {"type": "string", "format": "date-time"},
+        "end_time": {"type": ["string", "null"], "format": "date-time"},
+        "status": {"enum": ["candidate", "open", "ongoing", "recovering", "resolved"]},
+        "severity": {"enum": ["info", "warning", "critical"]},
+        "confidence_score": {"type": "number", "minimum": 0, "maximum": 1},
+        "affected_agents": {"type": "array", "items": {"type": "string"}},
+        "affected_endpoints": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "array", "items": {"type": "object"}},
+        "rule_version": {"type": "string"},
+        "peak_latency_ms": {"type": ["number", "null"], "minimum": 0},
+        "maximum_packet_loss_pct": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "duration_ms": {"type": ["number", "null"], "minimum": 0},
+        "summary": {"type": "string", "minLength": 1},
+        "recommended_action": {"type": "string", "minLength": 1}
+      }
+    }
+  ]
+}
