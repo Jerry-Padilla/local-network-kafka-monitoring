@@ -24,7 +24,9 @@
       "pattern": "^[a-z0-9][a-z0-9._-]+$",
       "maxLength": 128
     },
-    "agent_role": {"enum": ["wired_reference", "wifi_observer"]},
+    "agent_role": {
+      "enum": ["wired_reference", "wifi_observer", "system_classifier"]
+    },
     "event_time": {"type": "string", "format": "date-time", "pattern": "(Z|\\+00:00)$"},
     "published_time": {"type": "string", "format": "date-time", "pattern": "(Z|\\+00:00)$"},
     "sequence_number": {"type": "integer", "minimum": 0},

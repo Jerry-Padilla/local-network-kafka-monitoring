@@ -19,6 +19,8 @@ dashboards, API, and Kubernetes.
   SQLite outbox, and acknowledged Kafka delivery.
 - `services/stream-processor`: Spark parsing, watermarks, checkpointing,
   windowed metrics, invalid evidence, and PostgreSQL curation.
+- `services/incident-classifier`: deterministic cross-agent rules, incident
+  lifecycle state, evidence, durable PostgreSQL outbox, and Kafka publication.
 - `database`: Alembic migrations and database tests.
 - `schemas`: versioned JSON Schema contracts.
 - `scripts`: cross-platform developer and stack-verification commands.

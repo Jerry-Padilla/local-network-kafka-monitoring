@@ -14,6 +14,7 @@ pythonpath = [
   "services/simulator/src",
   "services/event-ingestor/src",
   "services/stream-processor/src",
+  "services/incident-classifier/src",
 ]
 markers = [
   "integration: requires the Docker Compose stack",
@@ -27,6 +28,7 @@ source = [
   "netpulse_simulator",
   "netpulse_ingestion",
   "netpulse_streaming",
+  "netpulse_classifier",
 ]
 omit = ["**/__main__.py"]
 
@@ -56,6 +58,8 @@ mypy_path = [
   "services/network-agent/src",
   "services/simulator/src",
   "services/event-ingestor/src",
+  "services/stream-processor/src",
+  "services/incident-classifier/src",
 ]
 packages = [
   "netpulse_agent",
@@ -63,6 +67,7 @@ packages = [
   "netpulse_simulator",
   "netpulse_ingestion",
   "netpulse_streaming",
+  "netpulse_classifier",
 ]
 exclude = ["Microsoft"]
 plugins = ["pydantic.mypy"]

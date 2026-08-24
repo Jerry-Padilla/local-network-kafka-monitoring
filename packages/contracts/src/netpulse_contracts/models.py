@@ -13,10 +13,11 @@ SEMANTIC_VERSION_PATTERN = r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-
 
 
 class AgentRole(StrEnum):
-    """Supported Phase 1 agent roles."""
+    """Supported telemetry and system producer roles."""
 
     WIRED_REFERENCE = "wired_reference"
     WIFI_OBSERVER = "wifi_observer"
+    SYSTEM_CLASSIFIER = "system_classifier"
 
 
 class CommonEnvelope(BaseModel):
@@ -131,7 +132,7 @@ class AgentHeartbeat(CommonEnvelope):
 
 
 class Incident(CommonEnvelope):
-    """Versioned incident contract reserved for Phase 4 producers."""
+    """Versioned deterministic incident state event."""
 
     event_type: Literal["network.incident"]
     incident_id: UUID
@@ -168,6 +169,18 @@ class Incident(CommonEnvelope):
         if value is not None and (value.tzinfo is None or value.utcoffset() != timedelta(0)):
             raise ValueError("timestamp must be timezone-aware UTC")
         return value
+
+    @model_validator(mode="after")
+    def validate_incident_lifecycle(self) -> Incident:
+        if self.end_time is not None and self.end_time < self.start_time:
+            raise ValueError("incident end_time must not precede start_time")
+        if self.status == "resolved" and self.end_time is None:
+            raise ValueError("resolved incidents require end_time")
+        if self.status != "resolved" and self.end_time is not None:
+            raise ValueError("only resolved incidents may have end_time")
+        if not self.affected_agents:
+            raise ValueError("incidents require at least one affected agent")
+        return self
 
 
 Event = Annotated[

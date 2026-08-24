@@ -99,6 +99,36 @@ case "$command" in
     "${compose[@]}" --profile test run --rm --entrypoint python \
       tests scripts/verify_streaming.py
     ;;
+  classifier-build)
+    "${compose[@]}" build incident-classifier
+    ;;
+  classifier-run)
+    "${compose[@]}" up -d --build --wait event-ingestor
+    "${compose[@]}" --profile classification up -d --build incident-classifier
+    ;;
+  classifier-once)
+    "${compose[@]}" up -d --build --wait event-ingestor
+    "${compose[@]}" --profile classification run --rm --no-deps incident-classifier once
+    ;;
+  classifier-verify)
+    "${compose[@]}" up -d --build --wait event-ingestor
+    "${compose[@]}" --profile demo run --rm --no-deps simulator \
+      run --scenario wifi-degradation --duration 3 --seed 71
+    sleep 1
+    for _ in 1 2; do
+      "${compose[@]}" --profile classification run --rm --no-deps \
+        -e NETPULSE_CLASSIFIER_LOOKBACK_SECONDS=15 incident-classifier once
+    done
+    "${compose[@]}" --profile demo run --rm --no-deps simulator \
+      run --scenario healthy --duration 6 --seed 72
+    sleep 1
+    for _ in 1 2; do
+      "${compose[@]}" --profile classification run --rm --no-deps \
+        -e NETPULSE_CLASSIFIER_LOOKBACK_SECONDS=5 incident-classifier once
+    done
+    "${compose[@]}" --profile test run --rm --no-deps --entrypoint python \
+      tests scripts/verify_classification.py
+    ;;
   *)
     echo "Unknown command: $command" >&2
     exit 2

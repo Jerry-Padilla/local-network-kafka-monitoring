@@ -32,3 +32,19 @@ def test_phase3_migration_has_replay_safe_streaming_keys_and_ranges() -> None:
     assert "stream_processing_failures" in migration
     assert "UNIQUE (source_topic, source_partition, source_offset)" in migration
     assert "window_size_seconds IN (60, 300, 900, 86400)" in migration
+
+
+def test_phase4_migration_has_lifecycle_constraints_and_durable_outbox() -> None:
+    migration = (
+        Path(__file__).parents[1]
+        / "migrations"
+        / "versions"
+        / "0004_phase4_incident_classification.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'down_revision = "0003"' in migration
+    assert "network_incidents" in migration
+    assert "incident_state_events" in migration
+    assert "uq_network_incidents_active_key" in migration
+    assert "published_at IS NULL" in migration
+    assert "status = 'resolved' AND end_time IS NOT NULL" in migration

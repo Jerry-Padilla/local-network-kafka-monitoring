@@ -15,6 +15,9 @@
 - The Spark processor independently consumes raw measurements, separates
   invalid rows, applies event-time watermarks, maintains four window sizes,
   checkpoints state, and upserts curated PostgreSQL aggregates.
+- The incident classifier correlates bounded typed measurements, service
+  checks, and heartbeat freshness; persists lifecycle state and a durable
+  outbox; and publishes acknowledged probable incident revisions.
 - PostgreSQL retains a JSONB copy of valid input plus typed operational tables.
   Alembic owns schema evolution.
 
@@ -27,6 +30,7 @@ sequenceDiagram
     participant P as PostgreSQL
     participant O as Valid or DLQ topic
     participant S as Spark streaming
+    participant X as Incident classifier
 
     A->>Q: insert validated event
     Q->>K: produce(key=agent_id, original JSON)
@@ -49,6 +53,11 @@ sequenceDiagram
     S->>S: parse + watermark + window
     S->>P: upsert aggregates or stream rejects
     S->>S: checkpoint offsets and state
+    X->>P: read bounded typed observations
+    X->>P: commit lifecycle + incident outbox
+    X->>O: publish incident_id-keyed state event
+    O-->>X: Kafka acknowledgement
+    X->>P: mark outbox row published
 ```
 
 If processing fails, the consumer seeks to the same offset and retries with
@@ -95,6 +104,7 @@ erDiagram
     ENDPOINTS ||--o{ SERVICE_CHECKS : targets
     AGENTS ||--o{ NETWORK_WINDOW_METRICS : summarizes
     ENDPOINTS ||--o{ NETWORK_WINDOW_METRICS : groups
+    NETWORK_INCIDENTS ||--o{ INCIDENT_STATE_EVENTS : records
 ```
 
 `processing_failures` stores original bytes, validation details, attempts, and
@@ -105,6 +115,10 @@ events.
 and measurement type as its replay-safe primary key.
 `stream_processing_failures` uses source topic/partition/offset uniqueness.
 `streaming_query_batches` records completed sink batches.
+
+`network_incidents` stores current and historical probable incident state with
+one active row per deterministic correlation key. `incident_state_events`
+stores each serialized lifecycle revision until Kafka acknowledges it.
 
 ## Reliability boundary
 
@@ -124,3 +138,7 @@ continues while Kafka is unavailable, pending events retain their original
 timestamps, and a delivery acknowledgement can be lost during a crash. This is
 also at-least-once delivery; downstream `event_id` deduplication remains
 mandatory.
+
+The classifier uses a PostgreSQL outbox because its lifecycle update and Kafka
+publication cannot be atomic. Replaying an unacknowledged row uses the same
+incident event ID, so consumers can deduplicate it.

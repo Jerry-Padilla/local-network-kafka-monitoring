@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
-from netpulse_contracts.models import NetworkMeasurement
+from netpulse_contracts.models import Incident, NetworkMeasurement
 from netpulse_contracts.validation import EventValidationError, validate_event
 
 
@@ -78,3 +78,43 @@ def test_non_utc_timestamp_is_rejected() -> None:
 def test_malformed_json_has_specific_validation_failure() -> None:
     with pytest.raises(EventValidationError, match="invalid UTF-8 JSON"):
         validate_event(b'{"broken":')
+
+
+def test_resolved_incident_requires_a_consistent_end_time() -> None:
+    payload = {
+        **measurement_payload(),
+        "event_type": "network.incident",
+        "agent_id": "netpulse-classifier-01",
+        "agent_role": "system_classifier",
+        "incident_id": "16a29c74-0880-4f22-bec3-d8cc84d3e420",
+        "incident_type": "isp_outage",
+        "start_time": datetime(2026, 7, 25, 12, tzinfo=UTC).isoformat(),
+        "end_time": datetime(2026, 7, 25, 12, 5, tzinfo=UTC).isoformat(),
+        "status": "resolved",
+        "severity": "critical",
+        "confidence_score": 0.9,
+        "affected_agents": ["network-agent-ethernet-01"],
+        "affected_endpoints": ["public-dns-a"],
+        "evidence": [{"rule": "test"}],
+        "rule_version": "1.0.0",
+        "peak_latency_ms": None,
+        "maximum_packet_loss_pct": 100,
+        "duration_ms": 300000,
+        "summary": "Probable ISP outage.",
+        "recommended_action": "Inspect WAN status.",
+    }
+    for field in (
+        "measurement_type",
+        "target_id",
+        "success",
+        "latency_ms",
+        "packet_loss_pct",
+    ):
+        payload.pop(field)
+
+    event = validate_event(payload)
+
+    assert isinstance(event, Incident)
+    payload["end_time"] = None
+    with pytest.raises(EventValidationError):
+        validate_event(payload)

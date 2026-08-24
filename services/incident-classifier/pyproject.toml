@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netpulse-incident-classifier"
+version = "0.1.0"
+description = "Deterministic multi-agent incident classification for NetPulse"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "confluent-kafka==2.8.2",
+  "netpulse-contracts==0.1.0",
+  "psycopg[binary,pool]==3.2.6",
+  "pydantic==2.11.1",
+  "structlog==25.2.0",
+]
+
+[project.scripts]
+netpulse-classifier = "netpulse_classifier.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netpulse_classifier"]

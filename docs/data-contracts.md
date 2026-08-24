@@ -16,6 +16,8 @@ Every event includes `event_id`, `event_type`, `schema_version`, `agent_id`,
 - `source_version` is the semantic version of the producing software.
 - `correlation_id` is explicitly nullable; other fields are nullable only where
   the event-specific schema says so.
+- `agent_role` includes `system_classifier` for incident state events; it does
+  not represent a physical measurement agent.
 
 ## Units
 
@@ -50,6 +52,10 @@ Phase 2 collectors use allowed additive fields for target address, Wi-Fi
 interface, protected SSID/BSSID, frequency, and link bitrate. These fields
 remain optional so Phase 1 consumers continue to accept the same version 1
 contract.
+
+Phase 4 incident events require at least one affected agent and one evidence
+object. Only `resolved` events carry `end_time`. The stable `incident_id`
+correlates lifecycle revisions; each revision has its own stable `event_id`.
 
 ## Topic routing
 

@@ -42,6 +42,9 @@ Normal `down` preserves them. `reset` removes them and all local demo data.
 ./scripts/netpulse.ps1 stream-build
 ./scripts/netpulse.ps1 stream-once
 ./scripts/netpulse.ps1 stream-verify
+./scripts/netpulse.ps1 classifier-build
+./scripts/netpulse.ps1 classifier-once
+./scripts/netpulse.ps1 classifier-verify
 ```
 
 The verification command requires both agents, typed measurements, no duplicate
@@ -58,6 +61,11 @@ The opt-in `streaming` profile runs PySpark 4.1.2 on Java 17 and Python 3.12.
 available offsets and exits. `stream-verify` publishes deterministic records,
 runs `available-now`, and checks curated/reject invariants. The first Spark run
 downloads pinned connector jars from Maven Central into the Ivy cache volume.
+
+The opt-in `classification` profile runs the deterministic classifier.
+`classifier-run` starts periodic observation, `classifier-once` performs one
+cycle, and `classifier-verify` demonstrates a seeded Wi-Fi degradation opening
+and resolving while checking the durable incident outbox.
 
 ## Configuration
 
@@ -78,6 +86,11 @@ Compose reads `.env`. Services use:
 - `NETPULSE_STREAM_TRIGGER_INTERVAL`
 - `NETPULSE_STREAM_SHUFFLE_PARTITIONS`
 - `NETPULSE_STREAM_MAXIMUM_OUTPUT_ROWS`
+- `NETPULSE_CLASSIFIER_LOOKBACK_SECONDS`
+- `NETPULSE_CLASSIFIER_INTERVAL_SECONDS`
+- `NETPULSE_CLASSIFIER_MINIMUM_SAMPLES`
+- `NETPULSE_CLASSIFIER_OPEN_OBSERVATIONS`
+- `NETPULSE_CLASSIFIER_RESOLVE_OBSERVATIONS`
 
 The application connects as limited role `netpulse_app`; only migrations use
 the database administrator.

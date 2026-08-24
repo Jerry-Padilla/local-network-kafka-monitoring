@@ -2,12 +2,12 @@
 
 NetPulse is a production-inspired, multi-agent home-network observability
 prototype. It compares a wired reference with a fixed Wi-Fi observer so later
-incident logic can distinguish probable local wireless degradation from router,
+incident logic distinguishes probable local wireless degradation from router,
 ISP, DNS, and external-service symptoms.
 
 Phase 1 implements the validated local ingestion foundation. Phase 2 adds the
 lightweight agent software and its durable local queue. Phase 3 adds event-time
-streaming curation:
+streaming curation. Phase 4 adds deterministic incident correlation:
 
 ```mermaid
 flowchart LR
@@ -16,11 +16,14 @@ flowchart LR
     S[Deterministic two-agent simulator] -->|versioned JSON, agent_id key| K[(Kafka KRaft)]
     K --> C[Event ingestor]
     K --> T[Spark Structured Streaming]
+    P --> I[Incident classifier]
     C -->|valid and deduplicated| P[(PostgreSQL)]
     C -->|validated measurements| V[valid.v1 topic]
     C -->|invalid source record| D[dead-letter.v1 topic]
     C -->|failure evidence| P
     T -->|event-time windows + invalid evidence| P
+    I -->|lifecycle + durable outbox| P
+    I -->|probable incident states| N[incidents.v1 topic]
 ```
 
 This is a small local test bed for data-engineering concepts, not an ISP-grade
@@ -45,10 +48,13 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 - Spark 4.1.2 raw-measurement parsing, a 15-minute watermark, 1/5/15-minute and
   daily windows, approximate percentiles, persistent checkpoints, structured
   progress logs, replay-safe PostgreSQL aggregates, and invalid source evidence.
+- Deterministic cross-agent rules for Wi-Fi, router, ISP, DNS, service, latency,
+  loss, and agent-offline symptoms, with confidence, evidence, lifecycle state,
+  PostgreSQL persistence, and an acknowledgement-gated Kafka outbox.
 
 Physical Pi Zero W/Pi 3 installation and resource measurements have not been
-executed. Incident classification, dashboards, query APIs, Kubernetes, and
-measured capacity results are intentionally not implemented yet.
+executed. Dashboards, query APIs, Kubernetes, and measured capacity results are
+intentionally not implemented yet.
 
 ## Quick start
 
@@ -101,6 +107,10 @@ identifiers.
 | Run Spark continuously | `make stream-run` | `./scripts/netpulse.ps1 stream-run` |
 | Process available Kafka data | `make stream-once` | `./scripts/netpulse.ps1 stream-once` |
 | Verify streaming invariants | `make stream-verify` | `./scripts/netpulse.ps1 stream-verify` |
+| Build incident classifier | `make classifier-build` | `./scripts/netpulse.ps1 classifier-build` |
+| Run incident classifier | `make classifier-run` | `./scripts/netpulse.ps1 classifier-run` |
+| Evaluate incidents once | `make classifier-once` | `./scripts/netpulse.ps1 classifier-once` |
+| Verify incident lifecycle | `make classifier-verify` | `./scripts/netpulse.ps1 classifier-verify` |
 | Stop containers | `make down` | `./scripts/netpulse.ps1 down` |
 
 `reset` additionally deletes the named Kafka and PostgreSQL volumes and is
@@ -144,6 +154,11 @@ keys, but Kafka, Spark state, and PostgreSQL do not share an atomic transaction.
 This remains replay-safe at-least-once processing rather than an end-to-end
 exactly-once claim.
 
+The classifier first commits each lifecycle state and its Kafka payload to a
+PostgreSQL outbox. It marks the outbox row published only after Kafka
+acknowledges `network.incidents.v1`. A crash can repeat a stable `event_id`;
+incident consumers must deduplicate it.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md)
@@ -151,6 +166,7 @@ exactly-once claim.
 - [Local deployment](docs/deployment.md)
 - [Raspberry Pi setup](docs/raspberry-pi-setup.md)
 - [Spark Structured Streaming](docs/streaming.md)
+- [Incident classification](docs/incident-classification.md)
 - [Failure testing](docs/failure-testing.md)
 - [Security and privacy](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -162,6 +178,8 @@ exactly-once claim.
 - [Phase 2 software completion report](docs/phase2-completion-report.md)
 - [Phase 3 implementation checklist](docs/phase3-implementation-plan.md)
 - [Phase 3 completion report](docs/phase3-completion-report.md)
+- [Phase 4 implementation checklist](docs/phase4-implementation-plan.md)
+- [Phase 4 completion report](docs/phase4-completion-report.md)
 
 ## Portfolio description
 
@@ -177,9 +195,11 @@ exactly-once claim.
 - Built a Spark Structured Streaming curation path with event-time watermarks,
   four aggregate windows, checkpoint recovery, invalid-record evidence, and
   replay-safe PostgreSQL upserts.
+- Implemented evidence-bearing deterministic correlation and a replay-safe
+  candidate-to-resolved incident lifecycle published through Kafka.
 
-Only validated Phase 1, Phase 2 software, and Phase 3 streaming capabilities
-are claimed here; physical Raspberry Pi validation remains outstanding.
+Only capabilities supported by the completion reports are claimed here;
+physical Raspberry Pi validation remains outstanding.
 
 ## License
 

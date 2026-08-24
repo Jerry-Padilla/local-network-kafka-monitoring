@@ -20,6 +20,8 @@
   checks, speed tests, and heartbeats remain in operational tables.
 - Kafka consumer-lag, infrastructure metrics, Grafana, and alerting are later
   phases.
-- Static anomaly scoring and incident classification are not implemented.
+- Incident classification uses static deterministic thresholds over a bounded
+  database snapshot. It has no learned baseline, seasonality model, or
+  definitive access to router/ISP internals.
 - No warehouse, Power BI views, API, Kubernetes, RAG, or MCP layer exists.
 - No throughput, recovery-time, or capacity figures are claimed.

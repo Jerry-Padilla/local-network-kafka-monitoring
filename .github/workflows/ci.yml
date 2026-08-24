@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config --quiet
-      - run: docker compose build event-ingestor network-agent simulator stream-processor tests
+      - run: docker compose build event-ingestor network-agent simulator stream-processor incident-classifier tests
 
   integration:
     runs-on: ubuntu-latest
@@ -58,6 +58,18 @@ jobs:
       - run: docker compose --profile demo run --rm simulator run --scenario malformed-events --duration 1 --seed 43
       - run: docker compose --profile streaming run --rm -e NETPULSE_STREAM_TRIGGER_MODE=available-now stream-processor
       - run: docker compose --profile test run --rm --entrypoint python tests scripts/verify_streaming.py
+      - if: always()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down --volumes
+
+  classification-integration:
+    runs-on: ubuntu-latest
+    needs: [quality, containers]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/netpulse.sh classifier-verify
       - if: always()
         run: docker compose logs --no-color
       - if: always()

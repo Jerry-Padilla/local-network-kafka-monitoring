@@ -5,7 +5,8 @@ param(
         "setup", "lint", "format", "typecheck", "test", "test-unit",
         "test-integration", "up", "down", "reset", "logs", "demo", "verify",
         "kafka-topics", "db-shell", "config", "agent-build", "agent-validate",
-        "agent-test", "stream-build", "stream-run", "stream-once", "stream-verify"
+        "agent-test", "stream-build", "stream-run", "stream-once", "stream-verify",
+        "classifier-build", "classifier-run", "classifier-once", "classifier-verify"
     )]
     [string]$Command = "config"
 )
@@ -128,6 +129,53 @@ switch ($Command) {
         Invoke-DockerCompose @(
             "--profile", "test", "run", "--rm", "--entrypoint", "python",
             "tests", "scripts/verify_streaming.py"
+        )
+    }
+    "classifier-build" {
+        Invoke-DockerCompose @("build", "incident-classifier")
+    }
+    "classifier-run" {
+        Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
+        Invoke-DockerCompose @(
+            "--profile", "classification", "up", "-d", "--build", "incident-classifier"
+        )
+    }
+    "classifier-once" {
+        Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
+        Invoke-DockerCompose @(
+            "--profile", "classification", "run", "--rm", "--no-deps",
+            "incident-classifier", "once"
+        )
+    }
+    "classifier-verify" {
+        Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
+        Invoke-DockerCompose @(
+            "--profile", "demo", "run", "--rm", "--no-deps", "simulator",
+            "run", "--scenario", "wifi-degradation", "--duration", "3", "--seed", "71"
+        )
+        Start-Sleep -Seconds 1
+        1..2 | ForEach-Object {
+            Invoke-DockerCompose @(
+                "--profile", "classification", "run", "--rm", "--no-deps",
+                "-e", "NETPULSE_CLASSIFIER_LOOKBACK_SECONDS=15",
+                "incident-classifier", "once"
+            )
+        }
+        Invoke-DockerCompose @(
+            "--profile", "demo", "run", "--rm", "--no-deps", "simulator",
+            "run", "--scenario", "healthy", "--duration", "6", "--seed", "72"
+        )
+        Start-Sleep -Seconds 1
+        1..2 | ForEach-Object {
+            Invoke-DockerCompose @(
+                "--profile", "classification", "run", "--rm", "--no-deps",
+                "-e", "NETPULSE_CLASSIFIER_LOOKBACK_SECONDS=5",
+                "incident-classifier", "once"
+            )
+        }
+        Invoke-DockerCompose @(
+            "--profile", "test", "run", "--rm", "--no-deps", "--entrypoint", "python",
+            "tests", "scripts/verify_classification.py"
         )
     }
 }

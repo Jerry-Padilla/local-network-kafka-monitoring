@@ -169,6 +169,32 @@ services:
     restart: unless-stopped
     networks: [backend]
 
+  incident-classifier:
+    profiles: [classification]
+    build:
+      context: .
+      dockerfile: services/incident-classifier/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+      NETPULSE_CLASSIFIER_LOOKBACK_SECONDS: ${NETPULSE_CLASSIFIER_LOOKBACK_SECONDS:-60}
+      NETPULSE_CLASSIFIER_INTERVAL_SECONDS: ${NETPULSE_CLASSIFIER_INTERVAL_SECONDS:-10}
+      NETPULSE_CLASSIFIER_MINIMUM_SAMPLES: ${NETPULSE_CLASSIFIER_MINIMUM_SAMPLES:-2}
+      NETPULSE_CLASSIFIER_OPEN_OBSERVATIONS: ${NETPULSE_CLASSIFIER_OPEN_OBSERVATIONS:-2}
+      NETPULSE_CLASSIFIER_RESOLVE_OBSERVATIONS: ${NETPULSE_CLASSIFIER_RESOLVE_OBSERVATIONS:-2}
+      NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    networks: [backend]
+
   tests:
     profiles: [test]
     build:

@@ -8,9 +8,10 @@
 3. Completed: Spark Structured Streaming parsing, watermarking, windowed
    metrics, checkpoints, curated PostgreSQL output, invalid evidence, and
    progress metrics pass local acceptance.
-4. Next: add deterministic cross-agent incident rules, evidence, confidence, and the
+4. Completed: deterministic cross-agent incident rules, evidence, confidence,
+   durable Kafka publication, and the
    candidate-to-resolved state machine.
-5. Add dimensional facts/dimensions, rerunnable batch jobs, Power BI views,
+5. Next: add dimensional facts/dimensions, rerunnable batch jobs, Power BI views,
    Prometheus, and provisioned Grafana dashboards.
 6. Add the read-only FastAPI query layer.
 7. Demonstrate orchestration with Kind and Kustomize.

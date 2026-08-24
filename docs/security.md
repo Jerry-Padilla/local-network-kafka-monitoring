@@ -12,6 +12,8 @@ Phase 1 is designed for loopback-only local development.
   their upstream defaults.
 - The Spark driver also runs as non-root. Its checkpoint and Ivy volumes contain
   query state and downloaded pinned dependencies, not application credentials.
+- The classifier runs as non-root and reads only validated operational tables.
+  Its recommended actions are fixed rule text, not executable commands.
 - Event and configuration validation rejects unsupported types, agents, and
   endpoints. The simulator does not scan networks.
 - Logs contain source coordinates and error classes but must not contain
@@ -34,6 +36,7 @@ pip-audit -r requirements-dev.txt
 docker scout cves netpulse-event-ingestor
 docker scout cves netpulse-simulator
 docker scout cves netpulse-stream-processor
+docker scout cves netpulse-incident-classifier
 ```
 
 These commands are instructions, not claims that scans have run.
