@@ -48,3 +48,26 @@ def test_phase4_migration_has_lifecycle_constraints_and_durable_outbox() -> None
     assert "uq_network_incidents_active_key" in migration
     assert "published_at IS NULL" in migration
     assert "status = 'resolved' AND end_time IS NOT NULL" in migration
+
+
+def test_phase5a_migration_has_grains_views_and_restricted_role() -> None:
+    migration = (
+        Path(__file__).parents[1] / "migrations" / "versions" / "0005_phase5a_analytics.py"
+    ).read_text(encoding="utf-8")
+    assert 'down_revision = "0004"' in migration
+    for name in (
+        "dim_agent",
+        "dim_endpoint",
+        "dim_date",
+        "dim_probe",
+        "fact_reliability_daily",
+        "fact_incident",
+        "bridge_incident_agent",
+        "bridge_incident_endpoint",
+        "analytics_job_runs",
+        "v_daily_probe_reliability",
+        "v_incident_summary",
+    ):
+        assert name in migration
+    assert "CREATE ROLE netpulse_report NOLOGIN" in migration
+    assert "GRANT SELECT ON v_daily_probe_reliability, v_incident_summary" in migration

@@ -195,6 +195,20 @@ services:
     restart: unless-stopped
     networks: [backend]
 
+  analytics:
+    profiles: [analytics]
+    build:
+      context: .
+      dockerfile: services/analytics/Dockerfile
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+      NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+    restart: "no"
+    networks: [backend]
+
   tests:
     profiles: [test]
     build:
@@ -203,6 +217,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+      NETPULSE_ADMIN_DATABASE_URL: postgresql://netpulse_admin:${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}@postgres:5432/${POSTGRES_DB:-netpulse}
     volumes:
       - .:/workspace
     networks: [backend]

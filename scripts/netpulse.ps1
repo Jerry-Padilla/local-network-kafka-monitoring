@@ -6,7 +6,8 @@ param(
         "test-integration", "up", "down", "reset", "logs", "demo", "verify",
         "kafka-topics", "db-shell", "config", "agent-build", "agent-validate",
         "agent-test", "stream-build", "stream-run", "stream-once", "stream-verify",
-        "classifier-build", "classifier-run", "classifier-once", "classifier-verify"
+        "classifier-build", "classifier-run", "classifier-once", "classifier-verify",
+        "analytics-build", "analytics-all", "analytics-verify"
     )]
     [string]$Command = "config"
 )
@@ -149,6 +150,7 @@ switch ($Command) {
     }
     "classifier-verify" {
         Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
+        Invoke-DockerCompose @("build", "incident-classifier")
         Invoke-DockerCompose @(
             "--profile", "demo", "run", "--rm", "--no-deps", "simulator",
             "run", "--scenario", "wifi-degradation", "--duration", "3", "--seed", "71"
@@ -176,6 +178,25 @@ switch ($Command) {
         Invoke-DockerCompose @(
             "--profile", "test", "run", "--rm", "--no-deps", "--entrypoint", "python",
             "tests", "scripts/verify_classification.py"
+        )
+    }
+    "analytics-build" {
+        Invoke-DockerCompose @("--profile", "analytics", "build", "analytics")
+    }
+    "analytics-all" {
+        Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
+        Invoke-DockerCompose @("--profile", "analytics", "build", "migrate", "analytics")
+        Invoke-DockerCompose @("run", "--rm", "migrate")
+        Invoke-DockerCompose @("--profile", "analytics", "run", "--rm", "analytics", "--all")
+    }
+    "analytics-verify" {
+        Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
+        Invoke-DockerCompose @("--profile", "analytics", "--profile", "test", "build", "migrate", "analytics", "tests")
+        Invoke-DockerCompose @("run", "--rm", "migrate")
+        Invoke-DockerCompose @("--profile", "analytics", "run", "--rm", "analytics", "--all")
+        Invoke-DockerCompose @(
+            "--profile", "test", "run", "--rm", "--no-deps", "--entrypoint", "python",
+            "tests", "scripts/verify_analytics.py"
         )
     }
 }

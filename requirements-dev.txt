@@ -4,6 +4,7 @@
 -e ./services/event-ingestor
 -e ./services/stream-processor
 -e ./services/incident-classifier
+-e ./services/analytics
 alembic==1.15.2
 coverage[toml]==7.8.0
 mypy==1.15.0

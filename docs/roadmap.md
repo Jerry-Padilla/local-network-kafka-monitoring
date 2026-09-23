@@ -3,8 +3,9 @@
 1. Completed: validate the Phase 1 Compose acceptance suite and close local
    environment defects.
 2. Software complete: the Raspberry Pi agent and bounded SQLite outbox pass
-   Python 3.12 and local recovery acceptance. Physical Pi Zero W/Pi 3
-   installation and resource validation remain.
+   Python 3.12 and local recovery acceptance. The agent and contracts packages
+   also permit Python 3.13, with a separate x86_64 CI check. Physical Pi 3 B+
+   installation and resource validation remain; Pi Zero models are out of scope.
 3. Completed: Spark Structured Streaming parsing, watermarking, windowed
    metrics, checkpoints, curated PostgreSQL output, invalid evidence, and
    progress metrics pass local acceptance.

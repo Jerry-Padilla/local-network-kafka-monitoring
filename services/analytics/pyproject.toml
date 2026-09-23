@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netpulse-analytics"
+version = "0.1.0"
+description = "Transactional dimensional analytics refresh for NetPulse"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "psycopg[binary]==3.2.6",
+  "structlog==25.2.0",
+]
+
+[project.scripts]
+netpulse-analytics = "netpulse_analytics.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netpulse_analytics"]

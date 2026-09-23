@@ -43,6 +43,14 @@ dashboards, API, and Kubernetes.
    before completion.
 10. Never fabricate test, benchmark, scale, availability, or recovery claims.
 
+## Codex development helpers
+
+For bounded data-model and ETL work, delegate to `data_engineer`; for Pi 3 B+
+and local deployment work, use `platform_pi_engineer`. Use `verifier` for
+independent, read-only review after implementation. Give each helper exact
+owned paths and acceptance commands, and avoid overlapping writes. The lead
+reviews, integrates, and verifies the result. See `docs/agent-team.md`.
+
 ## Commands
 
 - `make lint` / `./scripts/netpulse.ps1 lint`

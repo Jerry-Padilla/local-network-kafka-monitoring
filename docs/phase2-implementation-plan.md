@@ -13,7 +13,8 @@
 - [x] Add systemd assets and Raspberry Pi installation guidance.
 - [x] Add mock-based unit and contract tests.
 - [x] Execute Python 3.12 container tests and live Kafka recovery acceptance.
-- [ ] Validate installation and resource use on a physical Pi Zero W and Pi 3.
+- [ ] Validate installation and resource use on the target Pi 3 B+ running
+  64-bit Raspberry Pi OS Lite Trixie. Pi Zero models are out of scope.
 
 Phase 3 must not begin until the software acceptance suite passes. Physical Pi
 validation can remain an explicitly recorded hardware limitation, but must not

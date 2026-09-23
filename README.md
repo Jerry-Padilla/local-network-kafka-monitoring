@@ -51,9 +51,13 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 - Deterministic cross-agent rules for Wi-Fi, router, ISP, DNS, service, latency,
   loss, and agent-offline symptoms, with confidence, evidence, lifecycle state,
   PostgreSQL persistence, and an acknowledgement-gated Kafka outbox.
+- An opt-in daily analytics batch that rebuilds exact UTC probe counts and a
+  current incident snapshot from deduplicated operational tables, with
+  read-only reporting views.
 
-Physical Pi Zero W/Pi 3 installation and resource measurements have not been
-executed. Dashboards, query APIs, Kubernetes, and measured capacity results are
+Physical Pi 3 B+ installation and resource measurements have not been
+executed. Pi Zero models are outside the current hardware scope. Dashboards,
+query APIs, Kubernetes, and measured capacity results are
 intentionally not implemented yet.
 
 ## Quick start
@@ -111,6 +115,9 @@ identifiers.
 | Run incident classifier | `make classifier-run` | `./scripts/netpulse.ps1 classifier-run` |
 | Evaluate incidents once | `make classifier-once` | `./scripts/netpulse.ps1 classifier-once` |
 | Verify incident lifecycle | `make classifier-verify` | `./scripts/netpulse.ps1 classifier-verify` |
+| Build analytics job | `make analytics-build` | `./scripts/netpulse.ps1 analytics-build` |
+| Backfill analytics | `make analytics-all` | `./scripts/netpulse.ps1 analytics-all` |
+| Reconcile analytics facts | `make analytics-verify` | `./scripts/netpulse.ps1 analytics-verify` |
 | Stop containers | `make down` | `./scripts/netpulse.ps1 down` |
 
 `reset` additionally deletes the named Kafka and PostgreSQL volumes and is
@@ -165,8 +172,10 @@ incident consumers must deduplicate it.
 - [Data contracts](docs/data-contracts.md)
 - [Local deployment](docs/deployment.md)
 - [Raspberry Pi setup](docs/raspberry-pi-setup.md)
+- [Codex development agent team](docs/agent-team.md)
 - [Spark Structured Streaming](docs/streaming.md)
 - [Incident classification](docs/incident-classification.md)
+- [Daily analytics and reporting](docs/analytics.md)
 - [Failure testing](docs/failure-testing.md)
 - [Security and privacy](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md)

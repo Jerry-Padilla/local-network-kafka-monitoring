@@ -112,6 +112,7 @@ case "$command" in
     ;;
   classifier-verify)
     "${compose[@]}" up -d --build --wait event-ingestor
+    "${compose[@]}" build incident-classifier
     "${compose[@]}" --profile demo run --rm --no-deps simulator \
       run --scenario wifi-degradation --duration 3 --seed 71
     sleep 1
@@ -128,6 +129,23 @@ case "$command" in
     done
     "${compose[@]}" --profile test run --rm --no-deps --entrypoint python \
       tests scripts/verify_classification.py
+    ;;
+  analytics-build)
+    "${compose[@]}" --profile analytics build analytics
+    ;;
+  analytics-all)
+    "${compose[@]}" up -d --wait postgres
+    "${compose[@]}" --profile analytics build migrate analytics
+    "${compose[@]}" run --rm migrate
+    "${compose[@]}" --profile analytics run --rm analytics --all
+    ;;
+  analytics-verify)
+    "${compose[@]}" up -d --wait postgres
+    "${compose[@]}" --profile analytics --profile test build migrate analytics tests
+    "${compose[@]}" run --rm migrate
+    "${compose[@]}" --profile analytics run --rm analytics --all
+    "${compose[@]}" --profile test run --rm --no-deps --entrypoint python \
+      tests scripts/verify_analytics.py
     ;;
   *)
     echo "Unknown command: $command" >&2
