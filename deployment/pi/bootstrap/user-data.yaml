@@ -1,0 +1,6 @@
+#cloud-config
+hostname: netpulse-pi
+manage_etc_hosts: true
+package_update: false
+runcmd:
+  - [bash, /boot/firmware/netpulse-bootstrap/first-boot.sh]

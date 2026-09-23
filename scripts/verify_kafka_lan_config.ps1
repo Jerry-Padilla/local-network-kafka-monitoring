@@ -22,29 +22,30 @@ if (-not $isPrivate) {
 
 $env:KAFKA_LAN_HOST = $ExpectedHost
 $env:KAFKA_EXTERNAL_PORT = "$ExpectedPort"
+$env:KAFKA_EXTERNAL_BIND_ADDRESS = "0.0.0.0"
 $config = docker compose -f $ComposeFile config 2>&1 | Out-String
 if ($LASTEXITCODE -ne 0) {
     throw "docker compose config failed:`n$config"
 }
 
-$required = @(
-    "EXTERNAL://${ExpectedHost}:${ExpectedPort}",
-    "0.0.0.0:${ExpectedPort}:29092",
-    "PLAINTEXT://kafka:9092"
+$requiredPatterns = @(
+    [regex]::Escape("EXTERNAL://${ExpectedHost}:${ExpectedPort}"),
+    "host_ip:\s+0\.0\.0\.0\s+target:\s+29092\s+published:\s+`"?$ExpectedPort`"?",
+    [regex]::Escape("PLAINTEXT://kafka:9092")
 )
-$forbidden = @(
-    "EXTERNAL://localhost:${ExpectedPort}",
-    "127.0.0.1:${ExpectedPort}:29092"
+$forbiddenPatterns = @(
+    [regex]::Escape("EXTERNAL://localhost:${ExpectedPort}"),
+    "host_ip:\s+127\.0\.0\.1\s+target:\s+29092"
 )
 
-foreach ($value in $required) {
-    if (-not $config.Contains($value)) {
-        throw "Compose configuration is missing required value: $value"
+foreach ($pattern in $requiredPatterns) {
+    if ($config -notmatch $pattern) {
+        throw "Compose configuration is missing required pattern: $pattern"
     }
 }
-foreach ($value in $forbidden) {
-    if ($config.Contains($value)) {
-        throw "Compose configuration contains forbidden value: $value"
+foreach ($pattern in $forbiddenPatterns) {
+    if ($config -match $pattern) {
+        throw "Compose configuration contains forbidden pattern: $pattern"
     }
 }
 
