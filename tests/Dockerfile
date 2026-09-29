@@ -11,5 +11,6 @@ RUN apt-get update \
 WORKDIR /workspace
 COPY . /workspace
 RUN python -m pip install --no-cache-dir -r requirements-dev.txt
+RUN python -c "from netpulse_observability import MetricsHttpConfig, MetricsServer"
 
 ENTRYPOINT ["python", "-m", "pytest"]

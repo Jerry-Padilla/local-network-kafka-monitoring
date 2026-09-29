@@ -1,4 +1,5 @@
 -e ./packages/contracts
+-e ./packages/observability
 -e ./services/network-agent
 -e ./services/simulator
 -e ./services/event-ingestor
@@ -10,6 +11,7 @@ coverage[toml]==7.8.0
 mypy==1.15.0
 pytest==8.3.5
 pytest-cov==6.1.1
+prometheus-client==0.26.0
 pyspark==4.1.2
 ruff==0.11.2
 types-PyYAML==6.0.12.20250326

@@ -10,6 +10,7 @@ addopts = "-ra --strict-config --strict-markers --import-mode=importlib"
 testpaths = ["packages", "services", "tests"]
 pythonpath = [
   "packages/contracts/src",
+  "packages/observability/src",
   "services/network-agent/src",
   "services/simulator/src",
   "services/event-ingestor/src",
@@ -26,6 +27,7 @@ branch = true
 source = [
   "netpulse_agent",
   "netpulse_contracts",
+  "netpulse_observability",
   "netpulse_simulator",
   "netpulse_ingestion",
   "netpulse_streaming",
@@ -57,6 +59,7 @@ python_version = "3.12"
 strict = true
 mypy_path = [
   "packages/contracts/src",
+  "packages/observability/src",
   "services/network-agent/src",
   "services/simulator/src",
   "services/event-ingestor/src",
@@ -67,6 +70,7 @@ mypy_path = [
 packages = [
   "netpulse_agent",
   "netpulse_contracts",
+  "netpulse_observability",
   "netpulse_simulator",
   "netpulse_ingestion",
   "netpulse_streaming",
