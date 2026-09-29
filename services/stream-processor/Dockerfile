@@ -18,9 +18,11 @@ WORKDIR /app
 RUN python -m pip install --no-cache-dir "pyspark==${SPARK_VERSION}"
 
 COPY packages/contracts /app/packages/contracts
+COPY packages/observability /app/packages/observability
 COPY services/stream-processor /app/services/stream-processor
 RUN python -m pip install --no-cache-dir \
       /app/packages/contracts \
+      /app/packages/observability \
       /app/services/stream-processor
 
 RUN addgroup --system --gid 10001 netpulse \

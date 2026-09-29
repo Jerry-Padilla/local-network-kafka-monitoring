@@ -7,8 +7,11 @@ from pathlib import Path
 from typing import Any
 
 import structlog
+from netpulse_observability import MetricsServer
+from prometheus_client import CollectorRegistry
 
 from netpulse_streaming.config import StreamingConfig
+from netpulse_streaming.metrics import StreamingMetrics
 from netpulse_streaming.sink import PostgresStreamingSink
 from netpulse_streaming.transformations import aggregate_measurements, split_measurements
 
@@ -63,38 +66,49 @@ def run(config: StreamingConfig) -> None:
 
     configure_logging("netpulse-stream-processor")
     logger = structlog.get_logger()
-    spark = build_spark(config)
-    spark.sparkContext.setLogLevel("WARN")
-    source = build_kafka_source(spark, config)
-    valid, invalid = split_measurements(source)
-    aggregates = aggregate_measurements(valid, config.watermark_delay)
-    sink = PostgresStreamingSink(config.database_url, config.maximum_output_rows_per_batch)
-
-    checkpoint_root = Path(config.checkpoint_root)
-    metrics_query = _start_query(
-        aggregates,
-        sink.write_metrics,
-        checkpoint_root / "metrics",
-        f"{config.query_name}-metrics",
-        config,
-        "update",
-    )
-    invalid_query = _start_query(
-        invalid,
-        sink.write_failures,
-        checkpoint_root / "invalid",
-        f"{config.query_name}-invalid",
-        config,
-        "append",
-    )
-    queries = (metrics_query, invalid_query)
-    logger.info(
-        "streaming_queries_started",
-        source_topic=config.source_topic,
-        trigger_mode=config.trigger_mode,
-        checkpoint_root=config.checkpoint_root,
-    )
+    registry = CollectorRegistry()
+    metrics = StreamingMetrics(registry)
+    metrics_server = MetricsServer(config.metrics, registry)
+    metrics_server.start()
+    spark = None
+    queries: tuple[Any, ...] = ()
     try:
+        spark = build_spark(config)
+        spark.sparkContext.setLogLevel("WARN")
+        source = build_kafka_source(spark, config)
+        valid, invalid = split_measurements(source)
+        aggregates = aggregate_measurements(valid, config.watermark_delay)
+        sink = PostgresStreamingSink(
+            config.database_url,
+            config.maximum_output_rows_per_batch,
+            metrics,
+        )
+
+        checkpoint_root = Path(config.checkpoint_root)
+        metrics_query = _start_query(
+            aggregates,
+            sink.write_metrics,
+            checkpoint_root / "metrics",
+            f"{config.query_name}-metrics",
+            config,
+            "update",
+        )
+        queries = (metrics_query,)
+        invalid_query = _start_query(
+            invalid,
+            sink.write_failures,
+            checkpoint_root / "invalid",
+            f"{config.query_name}-invalid",
+            config,
+            "append",
+        )
+        queries = (metrics_query, invalid_query)
+        logger.info(
+            "streaming_queries_started",
+            source_topic=config.source_topic,
+            trigger_mode=config.trigger_mode,
+            checkpoint_root=config.checkpoint_root,
+        )
         while any(query.isActive for query in queries):
             for query in queries:
                 progress = query.lastProgress
@@ -113,10 +127,16 @@ def run(config: StreamingConfig) -> None:
         for query in queries:
             query.awaitTermination()
     finally:
-        for query in queries:
-            if query.isActive:
-                query.stop()
-        spark.stop()
+        try:
+            try:
+                for query in queries:
+                    if query.isActive:
+                        query.stop()
+            finally:
+                if spark is not None:
+                    spark.stop()
+        finally:
+            metrics_server.stop()
         logger.info("streaming_queries_stopped")
 
 

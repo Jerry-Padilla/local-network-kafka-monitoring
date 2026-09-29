@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import Literal, cast
+
+from netpulse_observability import MetricsHttpConfig
 
 TriggerMode = Literal["processing-time", "available-now"]
 
@@ -24,6 +26,9 @@ class StreamingConfig:
     query_name: str
     shuffle_partitions: int
     maximum_output_rows_per_batch: int
+    metrics: MetricsHttpConfig = field(
+        default_factory=lambda: MetricsHttpConfig(False, "127.0.0.1", 9103)
+    )
 
     @classmethod
     def from_env(cls) -> StreamingConfig:
@@ -71,6 +76,7 @@ class StreamingConfig:
             query_name=os.getenv("NETPULSE_STREAM_QUERY_NAME", "netpulse-window-metrics-v1"),
             shuffle_partitions=shuffle_partitions,
             maximum_output_rows_per_batch=maximum_rows,
+            metrics=MetricsHttpConfig.from_env(default_port=9103),
         )
 
 

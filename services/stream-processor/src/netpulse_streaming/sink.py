@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
 from psycopg.types.json import Jsonb
+
+from netpulse_streaming.metrics import StreamingMetrics
 
 METRIC_COLUMNS = (
     "window_start",
@@ -91,37 +94,71 @@ FAILURE_UPSERT = """
 class PostgresStreamingSink:
     """Persist small aggregate/reject micro-batches with replay-safe keys."""
 
-    def __init__(self, database_url: str, maximum_rows: int) -> None:
+    def __init__(
+        self,
+        database_url: str,
+        maximum_rows: int,
+        metrics: StreamingMetrics,
+    ) -> None:
         self._database_url = database_url
         self._maximum_rows = maximum_rows
+        self._metrics = metrics
 
     def write_metrics(self, batch: Any, batch_id: int) -> None:
-        rows = self._bounded_rows(batch)
-        values = [
-            {
-                **{column: _normalize(row.get(column)) for column in METRIC_COLUMNS},
-                "source_batch_id": batch_id,
-            }
-            for row in rows
-        ]
-        self._write(values, METRIC_UPSERT, "window-metrics", batch_id)
+        started_at = time.perf_counter()
+        try:
+            rows = self._bounded_rows(batch)
+            values = [
+                {
+                    **{column: _normalize(row.get(column)) for column in METRIC_COLUMNS},
+                    "source_batch_id": batch_id,
+                }
+                for row in rows
+            ]
+            self._write(values, METRIC_UPSERT, "window-metrics", batch_id)
+        except Exception:
+            self._metrics.record_batch(
+                "metrics", "failed", 0, time.perf_counter() - started_at
+            )
+            raise
+        self._metrics.record_batch(
+            "metrics",
+            "succeeded",
+            len(rows),
+            time.perf_counter() - started_at,
+            timestamp_seconds=time.time(),
+        )
 
     def write_failures(self, batch: Any, batch_id: int) -> None:
-        rows = self._bounded_rows(batch)
-        values = [
-            {
-                "source_topic": row["source_topic"],
-                "source_partition": row["source_partition"],
-                "source_offset": row["source_offset"],
-                "source_key": row["source_key"],
-                "original_payload": row["original_payload"],
-                "validation_errors": Jsonb(row["validation_errors"]),
-                "failed_at": _normalize(row["failed_at"]),
-                "source_batch_id": batch_id,
-            }
-            for row in rows
-        ]
-        self._write(values, FAILURE_UPSERT, "invalid-measurements", batch_id)
+        started_at = time.perf_counter()
+        try:
+            rows = self._bounded_rows(batch)
+            values = [
+                {
+                    "source_topic": row["source_topic"],
+                    "source_partition": row["source_partition"],
+                    "source_offset": row["source_offset"],
+                    "source_key": row["source_key"],
+                    "original_payload": row["original_payload"],
+                    "validation_errors": Jsonb(row["validation_errors"]),
+                    "failed_at": _normalize(row["failed_at"]),
+                    "source_batch_id": batch_id,
+                }
+                for row in rows
+            ]
+            self._write(values, FAILURE_UPSERT, "invalid-measurements", batch_id)
+        except Exception:
+            self._metrics.record_batch(
+                "failures", "failed", 0, time.perf_counter() - started_at
+            )
+            raise
+        self._metrics.record_batch(
+            "failures",
+            "succeeded",
+            len(rows),
+            time.perf_counter() - started_at,
+            timestamp_seconds=time.time(),
+        )
 
     def _bounded_rows(self, batch: Any) -> list[dict[str, Any]]:
         limited = batch.limit(self._maximum_rows + 1).collect()

@@ -5,10 +5,12 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from netpulse_classifier.config import ClassifierConfig
+from netpulse_classifier.metrics import ClassifierMetrics
 from netpulse_classifier.models import Finding, ObservationSnapshot, Transition
 from netpulse_classifier.service import IncidentClassifierService
 from netpulse_contracts.models import AgentRole
 from netpulse_contracts.validation import validate_event
+from prometheus_client import CollectorRegistry, generate_latest
 
 
 def test_incident_event_is_valid_and_uses_system_role() -> None:
@@ -130,6 +132,7 @@ def test_cycle_flushes_old_outbox_before_persisting_and_publishing_transition() 
         repository,  # type: ignore[arg-type]
         publisher,  # type: ignore[arg-type]
         FakeEngine(finding, transition),  # type: ignore[arg-type]
+        ClassifierMetrics(CollectorRegistry()),
     )
 
     count = service.evaluate_once(at)
@@ -139,3 +142,37 @@ def test_cycle_flushes_old_outbox_before_persisting_and_publishing_transition() 
     assert len(repository.marked) == 2
     assert len(publisher.records) == 2
     assert repository.pending == []
+
+
+def test_cycle_updates_evaluation_transition_and_pending_metrics() -> None:
+    at = datetime(2026, 7, 26, 12, tzinfo=UTC)
+    finding = Finding(
+        "dns_failure:dns-check",
+        "dns_failure",
+        "critical",
+        0.9,
+        ("network-agent-ethernet-01",),
+        ("dns-check",),
+        ({"rule": "dns_failed_ip_healthy"},),
+        None,
+        None,
+        "DNS failed.",
+        "Inspect resolver.",
+    )
+    transition = Transition(uuid4(), finding, at, None, "candidate", 1, 1, 0)
+    repository = FakeRepository(transition)
+    registry = CollectorRegistry()
+    service = IncidentClassifierService(
+        ClassifierConfig.from_env(),
+        repository,  # type: ignore[arg-type]
+        FakePublisher(),  # type: ignore[arg-type]
+        FakeEngine(finding, transition),  # type: ignore[arg-type]
+        ClassifierMetrics(registry),
+    )
+
+    service.evaluate_once(at)
+
+    output = generate_latest(registry).decode()
+    assert 'netpulse_classifier_evaluations_total{outcome="succeeded"} 1.0' in output
+    assert 'netpulse_classifier_transitions_total{status="candidate"} 1.0' in output
+    assert "netpulse_classifier_pending_publications 0.0" in output

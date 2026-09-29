@@ -7,6 +7,8 @@ from threading import Event
 
 from confluent_kafka import KafkaError, Message, Producer
 
+from netpulse_classifier.metrics import ClassifierMetrics
+
 
 class IncidentPublicationError(RuntimeError):
     """Kafka did not acknowledge an incident state event."""
@@ -14,9 +16,14 @@ class IncidentPublicationError(RuntimeError):
 
 class IncidentPublisher:
     def __init__(
-        self, bootstrap_servers: str, client_id: str, delivery_timeout_seconds: float
+        self,
+        bootstrap_servers: str,
+        client_id: str,
+        delivery_timeout_seconds: float,
+        metrics: ClassifierMetrics,
     ) -> None:
         self._delivery_timeout_seconds = delivery_timeout_seconds
+        self._metrics = metrics
         self._producer = Producer(
             {
                 "bootstrap.servers": bootstrap_servers,
@@ -32,6 +39,14 @@ class IncidentPublisher:
         )
 
     def publish(self, topic: str, key: str, value: bytes) -> None:
+        try:
+            self._publish(topic, key, value)
+        except Exception:
+            self._metrics.record_publication("failed")
+            raise
+        self._metrics.record_publication("acknowledged")
+
+    def _publish(self, topic: str, key: str, value: bytes) -> None:
         delivered = Event()
         errors: list[KafkaError] = []
 

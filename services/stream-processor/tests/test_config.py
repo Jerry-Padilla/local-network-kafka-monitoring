@@ -18,6 +18,7 @@ def test_environment_configuration_is_explicit(monkeypatch: pytest.MonkeyPatch) 
     assert config.fail_on_data_loss is False
     assert config.trigger_mode == "available-now"
     assert config.shuffle_partitions == 3
+    assert config.metrics.port == 9103
 
 
 @pytest.mark.parametrize(

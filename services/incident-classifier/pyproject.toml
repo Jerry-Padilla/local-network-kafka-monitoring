@@ -10,6 +10,8 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "confluent-kafka==2.8.2",
   "netpulse-contracts==0.1.0",
+  "netpulse-observability==0.1.0",
+  "prometheus-client==0.26.0",
   "psycopg[binary,pool]==3.2.6",
   "pydantic==2.11.1",
   "structlog==25.2.0",

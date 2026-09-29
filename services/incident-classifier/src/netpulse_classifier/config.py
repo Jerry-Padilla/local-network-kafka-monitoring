@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from netpulse_observability import MetricsHttpConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +25,9 @@ class ClassifierConfig:
     weak_signal_dbm: float
     heartbeat_stale_seconds: int
     delivery_timeout_seconds: float
+    metrics: MetricsHttpConfig = field(
+        default_factory=lambda: MetricsHttpConfig(False, "127.0.0.1", 9104)
+    )
 
     @classmethod
     def from_env(cls) -> ClassifierConfig:
@@ -51,6 +56,7 @@ class ClassifierConfig:
                 os.getenv("NETPULSE_CLASSIFIER_HEARTBEAT_STALE_SECONDS", "150")
             ),
             delivery_timeout_seconds=float(os.getenv("NETPULSE_DELIVERY_TIMEOUT_SECONDS", "10")),
+            metrics=MetricsHttpConfig.from_env(default_port=9104),
         )
         positive = (
             config.lookback_seconds,

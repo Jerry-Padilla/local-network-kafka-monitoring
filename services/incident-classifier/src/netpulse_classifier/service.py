@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime
 from uuid import NAMESPACE_URL, uuid5
 
@@ -11,6 +12,7 @@ from netpulse_contracts.topics import INCIDENTS_TOPIC
 
 from netpulse_classifier.config import ClassifierConfig
 from netpulse_classifier.engine import ClassificationEngine
+from netpulse_classifier.metrics import ClassifierMetrics
 from netpulse_classifier.publisher import IncidentPublisher
 from netpulse_classifier.repository import PostgresIncidentRepository, utc_now
 
@@ -25,30 +27,45 @@ class IncidentClassifierService:
         repository: PostgresIncidentRepository,
         publisher: IncidentPublisher,
         engine: ClassificationEngine,
+        metrics: ClassifierMetrics,
     ) -> None:
         self._config = config
         self._repository = repository
         self._publisher = publisher
         self._engine = engine
+        self._metrics = metrics
         self._logger = structlog.get_logger(__name__)
 
     def evaluate_once(self, observed_at: datetime | None = None) -> int:
-        self.publish_pending()
-        at = observed_at or utc_now()
-        snapshot = self._repository.load_snapshot(at, self._config.lookback_seconds)
-        findings = self._engine.classify(snapshot)
-        active = self._repository.load_active()
-        transitions = self._engine.transition(snapshot, findings, active)
-        for transition in transitions:
-            event = self._event(transition, at)
-            self._repository.persist_transition(transition, event)
-        published = self.publish_pending()
-        self._logger.info(
-            "classification_cycle_completed",
-            findings=len(findings),
-            transitions=len(transitions),
-            publications=published,
-            observed_at=at.isoformat(),
+        started_at = time.perf_counter()
+        try:
+            self.publish_pending()
+            at = observed_at or utc_now()
+            snapshot = self._repository.load_snapshot(at, self._config.lookback_seconds)
+            findings = self._engine.classify(snapshot)
+            active = self._repository.load_active()
+            transitions = self._engine.transition(snapshot, findings, active)
+            for transition in transitions:
+                event = self._event(transition, at)
+                self._repository.persist_transition(transition, event)
+                self._metrics.record_transition(transition.status)
+            published = self.publish_pending()
+            self._logger.info(
+                "classification_cycle_completed",
+                findings=len(findings),
+                transitions=len(transitions),
+                publications=published,
+                observed_at=at.isoformat(),
+            )
+        except Exception:
+            self._metrics.record_evaluation(
+                "failed", time.perf_counter() - started_at
+            )
+            raise
+        self._metrics.record_evaluation(
+            "succeeded",
+            time.perf_counter() - started_at,
+            timestamp_seconds=time.time(),
         )
         return len(transitions)
 
@@ -56,6 +73,7 @@ class IncidentClassifierService:
         published = 0
         while True:
             pending = self._repository.pending_publications()
+            self._metrics.set_pending_publications(len(pending))
             if not pending:
                 return published
             for event_id, incident_id, payload in pending:

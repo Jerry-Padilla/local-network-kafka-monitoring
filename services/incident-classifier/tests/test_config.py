@@ -14,6 +14,7 @@ def test_environment_overrides_thresholds(monkeypatch: pytest.MonkeyPatch) -> No
     assert value.lookback_seconds == 90
     assert value.minimum_samples == 3
     assert value.high_latency_ms == 175
+    assert value.metrics.port == 9104
 
 
 @pytest.mark.parametrize(

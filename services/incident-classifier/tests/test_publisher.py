@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import pytest
+from netpulse_classifier.metrics import ClassifierMetrics
 from netpulse_classifier.publisher import IncidentPublicationError, IncidentPublisher
+from prometheus_client import CollectorRegistry, generate_latest
 
 
 class FakeProducer:
@@ -29,9 +31,17 @@ class FakeProducer:
         return 0
 
 
-def publisher(monkeypatch: pytest.MonkeyPatch) -> IncidentPublisher:
+def publisher(
+    monkeypatch: pytest.MonkeyPatch,
+    metrics: ClassifierMetrics | None = None,
+) -> IncidentPublisher:
     monkeypatch.setattr("netpulse_classifier.publisher.Producer", FakeProducer)
-    return IncidentPublisher("broker:9092", "classifier-test", 0.1)
+    return IncidentPublisher(
+        "broker:9092",
+        "classifier-test",
+        0.1,
+        metrics or ClassifierMetrics(CollectorRegistry()),
+    )
 
 
 def test_publisher_uses_idempotence_and_waits_for_ack(
@@ -57,6 +67,24 @@ def test_delivery_error_is_propagated(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(IncidentPublicationError, match="broker rejected"):
         instance.publish("incidents", "incident-id", b"{}")
+
+
+def test_publication_results_update_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    registry = CollectorRegistry()
+    metrics = ClassifierMetrics(registry)
+    FakeProducer.callback_error = None
+    FakeProducer.invoke_callback = True
+    FakeProducer.buffer_once = False
+    instance = publisher(monkeypatch, metrics)
+    instance.publish("incidents", "incident-id", b"{}")
+
+    FakeProducer.callback_error = "rejected"
+    with pytest.raises(IncidentPublicationError):
+        instance.publish("incidents", "incident-id", b"{}")
+
+    output = generate_latest(registry).decode()
+    assert 'netpulse_classifier_publications_total{outcome="acknowledged"} 1.0' in output
+    assert 'netpulse_classifier_publications_total{outcome="failed"} 1.0' in output
 
 
 def test_delivery_timeout_is_propagated(monkeypatch: pytest.MonkeyPatch) -> None:
