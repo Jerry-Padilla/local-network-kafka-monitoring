@@ -71,3 +71,44 @@ def test_phase5a_migration_has_grains_views_and_restricted_role() -> None:
         assert name in migration
     assert "CREATE ROLE netpulse_report NOLOGIN" in migration
     assert "GRANT SELECT ON v_daily_probe_reliability, v_incident_summary" in migration
+
+
+def test_phase5b_migration_has_sre_views_roles_and_container_probe() -> None:
+    migration = (
+        Path(__file__).parents[1]
+        / "migrations"
+        / "versions"
+        / "0006_phase5b_sre_views.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'down_revision = "0005"' in migration
+    assert "CREATE VIEW v_sre_agent_status" in migration
+    assert "CREATE VIEW v_sre_pipeline_status" in migration
+    assert "LEFT JOIN LATERAL" in migration
+    assert "ORDER BY h.event_time DESC, h.event_id DESC" in migration
+    assert "dead_letter_published_at IS NULL" in migration
+    assert "published_at IS NULL" in migration
+    assert "CREATE ROLE netpulse_monitor NOLOGIN" in migration
+    assert "GRANT pg_monitor TO netpulse_monitor" in migration
+    assert "GRANT SELECT ON v_sre_agent_status, v_sre_pipeline_status" in migration
+    assert "'container-observer-01', 'container_probe'" in migration
+
+
+def test_monitoring_user_scripts_require_passwords_and_quote_psql_values() -> None:
+    root = Path(__file__).parents[2]
+    init_script = (root / "database" / "init" / "01-create-monitoring-users.sh").read_text(
+        encoding="utf-8"
+    )
+    provision_script = (root / "scripts" / "provision-monitoring-users.sh").read_text(
+        encoding="utf-8"
+    )
+
+    for variable in ("GRAFANA_POSTGRES_PASSWORD", "POSTGRES_EXPORTER_PASSWORD"):
+        assert f'${{{variable}:-}}' in init_script
+        assert f'--set {variable.lower()}=' not in init_script
+    assert "format('ALTER ROLE netpulse_grafana LOGIN PASSWORD %L'" in init_script
+    assert "'ALTER ROLE netpulse_postgres_exporter LOGIN PASSWORD %L'" in init_script
+    assert ":'exporter_password'" in init_script
+    assert "GRANT netpulse_report TO netpulse_grafana" in init_script
+    assert "GRANT netpulse_monitor TO netpulse_postgres_exporter" in init_script
+    assert "/docker-entrypoint-initdb.d/01-create-monitoring-users.sh" in provision_script

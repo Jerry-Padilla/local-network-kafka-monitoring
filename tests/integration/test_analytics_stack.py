@@ -394,3 +394,71 @@ def test_reporting_role_can_read_only_views() -> None:
                 sql.SQL("REVOKE netpulse_report FROM {}").format(sql.Identifier(role_name))
             )
             admin_connection.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role_name)))
+
+
+@pytest.mark.skipif(not _integration_enabled(), reason="set NETPULSE_INTEGRATION=1")
+def test_sre_views_and_monitoring_logins_are_read_only() -> None:
+    admin_database_url = os.environ["NETPULSE_ADMIN_DATABASE_URL"]
+    grafana_password = os.environ["GRAFANA_POSTGRES_PASSWORD"]
+    exporter_password = os.environ["POSTGRES_EXPORTER_PASSWORD"]
+
+    with psycopg.connect(admin_database_url) as connection:
+        columns = {
+            row[0]
+            for row in connection.execute(
+                """SELECT column_name FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name = 'v_sre_agent_status'"""
+            ).fetchall()
+        }
+        assert {
+            "agent_id",
+            "last_heartbeat_at",
+            "heartbeat_age_seconds",
+            "local_queue_depth",
+            "collection_error_count",
+        } <= columns
+        pipeline = connection.execute("SELECT * FROM v_sre_pipeline_status").fetchall()
+        assert len(pipeline) == 1
+        assert connection.execute(
+            "SELECT COUNT(*) = COUNT(DISTINCT agent_id) FROM v_sre_agent_status"
+        ).fetchone() == (True,)
+        assert connection.execute(
+            "SELECT agent_role FROM agents WHERE agent_id = 'container-observer-01'"
+        ).fetchone() == ("container_probe",)
+        memberships = {
+            row[0]
+            for row in connection.execute(
+                """SELECT parent.rolname
+                   FROM pg_auth_members membership
+                   JOIN pg_roles parent ON parent.oid = membership.roleid
+                   JOIN pg_roles member ON member.oid = membership.member
+                   WHERE member.rolname = 'netpulse_postgres_exporter'"""
+            ).fetchall()
+        }
+        assert "netpulse_monitor" in memberships
+
+    grafana_url = psycopg.conninfo.make_conninfo(
+        admin_database_url,
+        user="netpulse_grafana",
+        password=grafana_password,
+    )
+    with psycopg.connect(grafana_url) as connection:
+        connection.execute("SELECT COUNT(*) FROM v_sre_agent_status")
+        connection.execute("SELECT COUNT(*) FROM v_sre_pipeline_status")
+        for statement in (
+            "SELECT * FROM agents",
+            "UPDATE agents SET display_name = display_name",
+        ):
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                connection.execute(statement)
+            connection.rollback()
+
+    exporter_url = psycopg.conninfo.make_conninfo(
+        admin_database_url,
+        user="netpulse_postgres_exporter",
+        password=exporter_password,
+    )
+    with psycopg.connect(exporter_url) as connection:
+        connection.execute("SELECT COUNT(*) FROM pg_stat_database")
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            connection.execute("SELECT * FROM agents")

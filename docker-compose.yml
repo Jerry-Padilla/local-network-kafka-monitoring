@@ -8,6 +8,8 @@ services:
       POSTGRES_USER: ${POSTGRES_ADMIN_USER:-netpulse_admin}
       POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-change-me-local-app}
+      GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD:-change-me-local-grafana}
+      POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:-change-me-local-exporter}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -221,6 +223,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
       NETPULSE_ADMIN_DATABASE_URL: postgresql://netpulse_admin:${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}@postgres:5432/${POSTGRES_DB:-netpulse}
+      GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD:-change-me-local-grafana}
+      POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:-change-me-local-exporter}
     volumes:
       - .:/workspace
     networks: [backend]
