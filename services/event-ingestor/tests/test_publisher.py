@@ -27,9 +27,7 @@ class FakeProducer:
         return 0
 
 
-def publisher(
-    monkeypatch, metrics: IngestionMetrics | None = None
-) -> SynchronousKafkaPublisher:
+def publisher(monkeypatch, metrics: IngestionMetrics | None = None) -> SynchronousKafkaPublisher:
     monkeypatch.setattr("netpulse_ingestion.publisher.Producer", FakeProducer)
     return SynchronousKafkaPublisher(
         "broker:9092",

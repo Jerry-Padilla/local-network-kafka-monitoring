@@ -33,9 +33,7 @@ def test_ingestion_metrics_track_retries_publication_and_last_success() -> None:
 
     output = _samples(registry)
     assert "netpulse_ingestion_retries_total 1.0" in output
-    assert (
-        'netpulse_ingestion_publications_total{outcome="acknowledged"} 1.0' in output
-    )
+    assert 'netpulse_ingestion_publications_total{outcome="acknowledged"} 1.0' in output
     assert 'netpulse_ingestion_publications_total{outcome="failed"} 1.0' in output
     assert "netpulse_ingestion_last_success_timestamp_seconds 1.75e+09" in output
 

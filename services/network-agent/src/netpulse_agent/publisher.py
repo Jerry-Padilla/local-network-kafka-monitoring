@@ -66,9 +66,7 @@ class OutboxPublisher:
         for record in self._outbox.ready():
             if self._publish_one(record):
                 acknowledged += 1
-                self._metrics.record_publication(
-                    "acknowledged", timestamp_seconds=time.time()
-                )
+                self._metrics.record_publication("acknowledged", timestamp_seconds=time.time())
             else:
                 failed += 1
                 self._metrics.record_publication("failed")

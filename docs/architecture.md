@@ -20,6 +20,13 @@
   outbox; and publishes acknowledged probable incident revisions.
 - PostgreSQL retains a JSONB copy of valid input plus typed operational tables.
   Alembic owns schema evolution.
+- Prometheus scrapes bounded service metrics plus Kafka/PostgreSQL exporters;
+  Alertmanager routes actionable local alerts; Grafana reads Prometheus and
+  four read-only PostgreSQL views. Their host ports are loopback-only.
+
+The Raspberry Pi 3 B+ is the required wired reference collector. The Compose
+`network-agent` is a repeatable `container_probe` fixture for development and
+failure evidence; it does not replace physical Pi acceptance.
 
 ```mermaid
 sequenceDiagram

@@ -18,10 +18,11 @@
   is intended for aggregate rather than raw-event cardinality.
 - The Phase 3 job currently aggregates network measurements only. Service
   checks, speed tests, and heartbeats remain in operational tables.
-- Kafka consumer-lag, infrastructure metrics, Grafana, and alerting are later
-  phases.
+- Prometheus, Alertmanager, exporters, and Grafana run on one Docker host and
+  therefore do not provide an independent monitoring failure domain.
 - Incident classification uses static deterministic thresholds over a bounded
   database snapshot. It has no learned baseline, seasonality model, or
   definitive access to router/ISP internals.
-- Phase 5A dimensional analytics and reporting views are implemented; live acceptance is recorded separately in the resumption report. Power BI dashboards, API, Kubernetes, RAG, and MCP remain future work.
+- PostgreSQL analytics and read-only SRE views are implemented. Grafana replaces
+  the earlier Power BI idea; an API, Kubernetes, RAG, and MCP remain future work.
 - No throughput, recovery-time, or capacity figures are claimed.

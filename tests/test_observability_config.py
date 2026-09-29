@@ -37,9 +37,7 @@ def test_monitoring_profile_uses_pinned_images_and_private_ports() -> None:
     assert "ports" not in services["postgres-exporter"]
     assert "ports" not in services["kafka-exporter"]
     assert services["postgres"]["ports"][0].startswith("127.0.0.1:")
-    assert services["kafka"]["ports"][0].startswith(
-        "${KAFKA_EXTERNAL_BIND_ADDRESS:-127.0.0.1}:"
-    )
+    assert services["kafka"]["ports"][0].startswith("${KAFKA_EXTERNAL_BIND_ADDRESS:-127.0.0.1}:")
 
 
 def test_monitoring_services_have_storage_healthchecks_and_safe_credentials() -> None:
@@ -55,9 +53,10 @@ def test_monitoring_services_have_storage_healthchecks_and_safe_credentials() ->
     assert services["postgres-exporter"]["environment"]["DATA_SOURCE_USER"] == (
         "netpulse_postgres_exporter"
     )
-    assert "POSTGRES_EXPORTER_PASSWORD" in services["postgres-exporter"]["environment"][
-        "DATA_SOURCE_PASS"
-    ]
+    assert (
+        "POSTGRES_EXPORTER_PASSWORD"
+        in services["postgres-exporter"]["environment"]["DATA_SOURCE_PASS"]
+    )
     assert "change-me-local-admin" not in str(services["grafana"])
     assert "change-me-local-admin" not in str(services["postgres-exporter"])
 
@@ -86,41 +85,26 @@ def test_prometheus_scrapes_internal_services_and_empty_pi_file_sd() -> None:
     )
     jobs = {item["job_name"]: item for item in prometheus["scrape_configs"]}
 
-    assert jobs["event-ingestor"]["static_configs"][0]["targets"] == [
-        "event-ingestor:9101"
-    ]
-    assert jobs["network-agent"]["static_configs"][0]["targets"] == [
-        "network-agent:9102"
-    ]
-    assert jobs["stream-processor"]["static_configs"][0]["targets"] == [
-        "stream-processor:9103"
-    ]
+    assert jobs["event-ingestor"]["static_configs"][0]["targets"] == ["event-ingestor:9101"]
+    assert jobs["network-agent"]["static_configs"][0]["targets"] == ["network-agent:9102"]
+    assert jobs["stream-processor"]["static_configs"][0]["targets"] == ["stream-processor:9103"]
     assert jobs["incident-classifier"]["static_configs"][0]["targets"] == [
         "incident-classifier:9104"
     ]
-    assert jobs["postgres-exporter"]["static_configs"][0]["targets"] == [
-        "postgres-exporter:9187"
-    ]
-    assert jobs["kafka-exporter"]["static_configs"][0]["targets"] == [
-        "kafka-exporter:9308"
-    ]
-    assert jobs["pi-agent"]["file_sd_configs"][0]["files"] == [
-        "/etc/prometheus/pi-targets.json"
-    ]
-    assert json.loads(
-        (OBSERVABILITY / "prometheus" / "pi-targets.json").read_text(encoding="utf-8")
-    ) == []
+    assert jobs["postgres-exporter"]["static_configs"][0]["targets"] == ["postgres-exporter:9187"]
+    assert jobs["kafka-exporter"]["static_configs"][0]["targets"] == ["kafka-exporter:9308"]
+    assert jobs["pi-agent"]["file_sd_configs"][0]["files"] == ["/etc/prometheus/pi-targets.json"]
+    assert (
+        json.loads((OBSERVABILITY / "prometheus" / "pi-targets.json").read_text(encoding="utf-8"))
+        == []
+    )
 
 
 def test_grafana_datasources_are_provisioned_from_environment() -> None:
     datasources = yaml.safe_load(
-        (
-            OBSERVABILITY
-            / "grafana"
-            / "provisioning"
-            / "datasources"
-            / "datasources.yml"
-        ).read_text(encoding="utf-8")
+        (OBSERVABILITY / "grafana" / "provisioning" / "datasources" / "datasources.yml").read_text(
+            encoding="utf-8"
+        )
     )["datasources"]
     by_uid = {item["uid"]: item for item in datasources}
 
@@ -133,15 +117,9 @@ def test_grafana_datasources_are_provisioned_from_environment() -> None:
 
 def test_recording_rules_cover_objectives_and_zero_traffic_guards() -> None:
     rules = yaml.safe_load(
-        (OBSERVABILITY / "prometheus" / "rules" / "recording.yml").read_text(
-            encoding="utf-8"
-        )
+        (OBSERVABILITY / "prometheus" / "rules" / "recording.yml").read_text(encoding="utf-8")
     )
-    records = {
-        rule["record"]: rule["expr"]
-        for group in rules["groups"]
-        for rule in group["rules"]
-    }
+    records = {rule["record"]: rule["expr"] for group in rules["groups"] for rule in group["rules"]}
 
     assert {
         "netpulse:ingestion_success_ratio:5m",
@@ -151,22 +129,14 @@ def test_recording_rules_cover_objectives_and_zero_traffic_guards() -> None:
         "netpulse:ingestion_error_budget_burn:5m",
     } <= records.keys()
     assert "clamp_min" in records["netpulse:ingestion_success_ratio:5m"]
-    assert "histogram_quantile(0.95" in records[
-        "netpulse:ingestion_processing_p95_seconds:5m"
-    ]
+    assert "histogram_quantile(0.95" in records["netpulse:ingestion_processing_p95_seconds:5m"]
 
 
 def test_alerts_are_actionable_and_empty_pi_discovery_is_safe() -> None:
     rules = yaml.safe_load(
-        (OBSERVABILITY / "prometheus" / "rules" / "alerts.yml").read_text(
-            encoding="utf-8"
-        )
+        (OBSERVABILITY / "prometheus" / "rules" / "alerts.yml").read_text(encoding="utf-8")
     )
-    alerts = {
-        rule["alert"]: rule
-        for group in rules["groups"]
-        for rule in group["rules"]
-    }
+    alerts = {rule["alert"]: rule for group in rules["groups"] for rule in group["rules"]}
     expected = {
         "NetPulseTargetDown",
         "NetPulsePostgresUnavailable",
@@ -183,26 +153,21 @@ def test_alerts_are_actionable_and_empty_pi_discovery_is_safe() -> None:
     for name in expected:
         alert = alerts[name]
         assert alert["labels"]["severity"] in {"warning", "critical"}
-        assert {"summary", "impact", "likely_cause", "runbook_url"} <= alert[
-            "annotations"
-        ].keys()
+        assert {"summary", "impact", "likely_cause", "runbook_url"} <= alert["annotations"].keys()
         assert alert["annotations"]["runbook_url"].startswith("https://github.com/")
     assert 'required="true"' in alerts["NetPulseTargetDown"]["expr"]
     assert 'count(up{job="pi-agent"}) > 0' in alerts["NetPulsePiStale"]["expr"]
-    assert json.loads(
-        (OBSERVABILITY / "prometheus" / "pi-targets.json").read_text(encoding="utf-8")
-    ) == []
+    assert (
+        json.loads((OBSERVABILITY / "prometheus" / "pi-targets.json").read_text(encoding="utf-8"))
+        == []
+    )
 
 
 def test_three_dashboards_are_provisioned_with_required_panels_and_datasources() -> None:
     provider = yaml.safe_load(
-        (
-            OBSERVABILITY
-            / "grafana"
-            / "provisioning"
-            / "dashboards"
-            / "provider.yml"
-        ).read_text(encoding="utf-8")
+        (OBSERVABILITY / "grafana" / "provisioning" / "dashboards" / "provider.yml").read_text(
+            encoding="utf-8"
+        )
     )
     assert provider["providers"][0]["options"]["path"] == "/var/lib/grafana/dashboards"
 
@@ -228,9 +193,7 @@ def test_three_dashboards_are_provisioned_with_required_panels_and_datasources()
     }
     for filename, (uid, required_titles) in expectations.items():
         dashboard = json.loads(
-            (OBSERVABILITY / "grafana" / "dashboards" / filename).read_text(
-                encoding="utf-8"
-            )
+            (OBSERVABILITY / "grafana" / "dashboards" / filename).read_text(encoding="utf-8")
         )
         assert dashboard["uid"] == uid
         assert dashboard["title"].startswith("NetPulse")

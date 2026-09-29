@@ -66,3 +66,12 @@ confirm:
 
 Record exact commands, timestamps, component versions, and observations. Do not
 claim a recovery result that was not measured.
+
+## Automated observability drills
+
+Start and verify monitoring first, then run `make failure-drill` or
+`./scripts/netpulse.ps1 failure-drill`. The driver covers Kafka and PostgreSQL
+stop/start, malformed traffic, and a traffic pause. Dependency restoration is
+in a `finally` block and no drill deletes volumes. It records UTC timestamps
+and the observed Prometheus alert state. A drill result proves only that exact
+run; retain its output with the environment and component versions.

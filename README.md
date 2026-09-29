@@ -5,9 +5,9 @@ prototype. It compares a wired reference with a fixed Wi-Fi observer so later
 incident logic distinguishes probable local wireless degradation from router,
 ISP, DNS, and external-service symptoms.
 
-Phase 1 implements the validated local ingestion foundation. Phase 2 adds the
-lightweight agent software and its durable local queue. Phase 3 adds event-time
-streaming curation. Phase 4 adds deterministic incident correlation:
+The current stack includes the validated ingestion foundation, lightweight Pi
+agent with a durable queue, event-time streaming, deterministic incident
+correlation, PostgreSQL analytics, and a self-hosted SRE observability plane:
 
 ```mermaid
 flowchart LR
@@ -24,6 +24,13 @@ flowchart LR
     T -->|event-time windows + invalid evidence| P
     I -->|lifecycle + durable outbox| P
     I -->|probable incident states| N[incidents.v1 topic]
+    C --> M[Prometheus]
+    T --> M
+    I --> M
+    A --> M
+    M --> G[Grafana OSS]
+    P -->|read-only SRE views| G
+    M --> L[Alertmanager]
 ```
 
 This is a small local test bed for data-engineering concepts, not an ISP-grade
@@ -54,11 +61,14 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 - An opt-in daily analytics batch that rebuilds exact UTC probe counts and a
   current incident snapshot from deduplicated operational tables, with
   read-only reporting views.
+- Prometheus recording/alert rules, Alertmanager, three provisioned Grafana
+  dashboards, read-only PostgreSQL monitoring identities, and matching
+  operational runbooks. All UI ports bind only to localhost.
 
-Physical Pi 3 B+ installation and resource measurements have not been
-executed. Pi Zero models are outside the current hardware scope. Dashboards,
-query APIs, Kubernetes, and measured capacity results are
-intentionally not implemented yet.
+The Raspberry Pi 3 B+ wired collector is mandatory. Its software and bootstrap
+path are implemented, but physical installation, outage recovery, metrics, and
+dashboard acceptance have not yet been executed. Pi Zero models, query APIs,
+Kubernetes, and measured capacity results remain outside the completed scope.
 
 ## Quick start
 
@@ -118,10 +128,20 @@ identifiers.
 | Build analytics job | `make analytics-build` | `./scripts/netpulse.ps1 analytics-build` |
 | Backfill analytics | `make analytics-all` | `./scripts/netpulse.ps1 analytics-all` |
 | Reconcile analytics facts | `make analytics-verify` | `./scripts/netpulse.ps1 analytics-verify` |
+| Render mandatory Pi target | `make monitoring-render PI_TARGET=192.168.1.42` | `./scripts/netpulse.ps1 monitoring-render 192.168.1.42` |
+| Start monitoring | `make monitoring-up` | `./scripts/netpulse.ps1 monitoring-up` |
+| Verify monitoring | `make monitoring-verify` | `./scripts/netpulse.ps1 monitoring-verify` |
+| Run reversible drills | `make failure-drill` | `./scripts/netpulse.ps1 failure-drill` |
+| Stop monitoring, preserve volumes | `make monitoring-down` | `./scripts/netpulse.ps1 monitoring-down` |
 | Stop containers | `make down` | `./scripts/netpulse.ps1 down` |
 
 `reset` additionally deletes the named Kafka and PostgreSQL volumes and is
 therefore destructive to local demo data.
+
+Grafana is at `http://127.0.0.1:3000`, Prometheus at port 9090, and
+Alertmanager at port 9093. The illustrative objectives are 99% successful
+ingestion, p95 processing below one second, and freshness below 60 seconds
+while traffic is active; they are portfolio targets, not production SLO claims.
 
 ## Simulator examples
 

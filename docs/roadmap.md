@@ -12,11 +12,13 @@
 4. Completed: deterministic cross-agent incident rules, evidence, confidence,
    durable Kafka publication, and the
    candidate-to-resolved state machine.
-5. Next: add dimensional facts/dimensions, rerunnable batch jobs, Power BI views,
-   Prometheus, and provisioned Grafana dashboards.
+5. Software complete: dimensional reporting, Prometheus, Alertmanager,
+   provisioned Grafana dashboards, read-only monitoring identities, and
+   reversible failure-drill tooling. Physical Pi acceptance remains the gate.
 6. Add the read-only FastAPI query layer.
 7. Demonstrate orchestration with Kind and Kustomize.
-8. Run measured performance/failure experiments and write capacity conclusions.
+8. Run physical Pi acceptance and measured performance/failure experiments;
+   write capacity conclusions only from captured evidence.
 9. Consider local, citation-bearing RAG and a bounded read-only MCP server only
    after all core acceptance criteria pass.
 

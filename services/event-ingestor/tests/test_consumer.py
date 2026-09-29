@@ -134,9 +134,7 @@ def test_repeated_processing_failure_seeks_and_stops_without_commit(monkeypatch)
     monkeypatch.setattr("netpulse_ingestion.consumer.time.sleep", lambda _seconds: None)
     monkeypatch.setattr("netpulse_ingestion.consumer.random.uniform", lambda _a, _b: 0)
     registry = CollectorRegistry()
-    consumer = IngestionConsumer(
-        config(attempts=2), FailingProcessor(), IngestionMetrics(registry)
-    )
+    consumer = IngestionConsumer(config(attempts=2), FailingProcessor(), IngestionMetrics(registry))
     fake = FakeKafkaConsumer.latest
 
     with pytest.raises(RuntimeError, match="stopping without committing"):

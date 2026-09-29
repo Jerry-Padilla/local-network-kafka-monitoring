@@ -7,9 +7,12 @@ param(
         "kafka-topics", "db-shell", "config", "agent-build", "agent-validate",
         "agent-test", "stream-build", "stream-run", "stream-once", "stream-verify",
         "classifier-build", "classifier-run", "classifier-once", "classifier-verify",
-        "analytics-build", "analytics-all", "analytics-verify"
+        "analytics-build", "analytics-all", "analytics-verify", "monitoring-render",
+        "monitoring-up", "monitoring-verify", "monitoring-down", "failure-drill"
     )]
-    [string]$Command = "config"
+    [string]$Command = "config",
+    [Parameter(Position = 1)]
+    [string]$Target
 )
 
 $ErrorActionPreference = "Stop"
@@ -198,5 +201,32 @@ switch ($Command) {
             "--profile", "test", "run", "--rm", "--no-deps", "--entrypoint", "python",
             "tests", "scripts/verify_analytics.py"
         )
+    }
+    "monitoring-render" {
+        if (-not $Target) { throw "monitoring-render requires the Pi IPv4 address or hostname" }
+        & python (Join-Path $RepositoryRoot "scripts/render_pi_metrics_target.py") $Target
+        if ($LASTEXITCODE -ne 0) { throw "Pi target rendering failed" }
+    }
+    "monitoring-up" {
+        Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
+        Invoke-DockerCompose @("run", "--rm", "migrate")
+        Invoke-DockerCompose @("--profile", "monitoring", "up", "-d", "--wait")
+    }
+    "monitoring-verify" {
+        & python (Join-Path $RepositoryRoot "scripts/verify_observability.py")
+        if ($LASTEXITCODE -ne 0) { throw "Observability verification failed" }
+    }
+    "monitoring-down" {
+        $MonitoringServices = @("grafana", "prometheus", "alertmanager", "kafka-exporter", "postgres-exporter")
+        Invoke-DockerCompose (@("--profile", "monitoring", "stop") + $MonitoringServices)
+        Invoke-DockerCompose (@("--profile", "monitoring", "rm", "-f") + $MonitoringServices)
+    }
+    "failure-drill" {
+        if ($Target) {
+            & python (Join-Path $RepositoryRoot "scripts/failure_drills.py") $Target
+        } else {
+            & python (Join-Path $RepositoryRoot "scripts/failure_drills.py")
+        }
+        if ($LASTEXITCODE -ne 0) { throw "Failure drill failed" }
     }
 }

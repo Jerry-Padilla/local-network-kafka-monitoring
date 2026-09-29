@@ -18,19 +18,12 @@ def test_streaming_metrics_cover_batch_outcomes_rows_duration_and_success() -> N
 
     output = generate_latest(registry).decode()
     assert (
-        'netpulse_streaming_batches_total{outcome="succeeded",query_kind="metrics"} 1.0'
-        in output
+        'netpulse_streaming_batches_total{outcome="succeeded",query_kind="metrics"} 1.0' in output
     )
-    assert (
-        'netpulse_streaming_batches_total{outcome="failed",query_kind="failures"} 1.0'
-        in output
-    )
+    assert 'netpulse_streaming_batches_total{outcome="failed",query_kind="failures"} 1.0' in output
     assert 'netpulse_streaming_rows_total{row_kind="accepted"} 4.0' in output
     assert 'netpulse_streaming_rows_total{row_kind="rejected"} 2.0' in output
-    assert (
-        'netpulse_streaming_batch_duration_seconds_count{query_kind="metrics"} 1.0'
-        in output
-    )
+    assert 'netpulse_streaming_batch_duration_seconds_count{query_kind="metrics"} 1.0' in output
     assert 'netpulse_streaming_last_success_timestamp_seconds{query_kind="metrics"} 100.0' in output
 
 

@@ -117,9 +117,7 @@ class PostgresStreamingSink:
             ]
             self._write(values, METRIC_UPSERT, "window-metrics", batch_id)
         except Exception:
-            self._metrics.record_batch(
-                "metrics", "failed", 0, time.perf_counter() - started_at
-            )
+            self._metrics.record_batch("metrics", "failed", 0, time.perf_counter() - started_at)
             raise
         self._metrics.record_batch(
             "metrics",
@@ -148,9 +146,7 @@ class PostgresStreamingSink:
             ]
             self._write(values, FAILURE_UPSERT, "invalid-measurements", batch_id)
         except Exception:
-            self._metrics.record_batch(
-                "failures", "failed", 0, time.perf_counter() - started_at
-            )
+            self._metrics.record_batch("failures", "failed", 0, time.perf_counter() - started_at)
             raise
         self._metrics.record_batch(
             "failures",

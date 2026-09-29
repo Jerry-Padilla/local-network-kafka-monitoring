@@ -75,10 +75,7 @@ def test_phase5a_migration_has_grains_views_and_restricted_role() -> None:
 
 def test_phase5b_migration_has_sre_views_roles_and_container_probe() -> None:
     migration = (
-        Path(__file__).parents[1]
-        / "migrations"
-        / "versions"
-        / "0006_phase5b_sre_views.py"
+        Path(__file__).parents[1] / "migrations" / "versions" / "0006_phase5b_sre_views.py"
     ).read_text(encoding="utf-8")
 
     assert 'down_revision = "0005"' in migration
@@ -104,8 +101,8 @@ def test_monitoring_user_scripts_require_passwords_and_quote_psql_values() -> No
     )
 
     for variable in ("GRAFANA_POSTGRES_PASSWORD", "POSTGRES_EXPORTER_PASSWORD"):
-        assert f'${{{variable}:-}}' in init_script
-        assert f'--set {variable.lower()}=' not in init_script
+        assert f"${{{variable}:-}}" in init_script
+        assert f"--set {variable.lower()}=" not in init_script
     assert "format('ALTER ROLE netpulse_grafana LOGIN PASSWORD %L'" in init_script
     assert "'ALTER ROLE netpulse_postgres_exporter LOGIN PASSWORD %L'" in init_script
     assert ":'exporter_password'" in init_script

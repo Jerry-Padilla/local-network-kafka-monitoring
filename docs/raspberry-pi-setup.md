@@ -165,6 +165,18 @@ edit the database directly while the service is running.
 
 ## Physical Pi deployment on the trusted LAN
 
+Before starting monitoring, render exactly one Pi scrape target from the host:
+
+```powershell
+./scripts/netpulse.ps1 monitoring-render 192.168.1.42
+./scripts/netpulse.ps1 monitoring-up
+./scripts/netpulse.ps1 monitoring-verify
+```
+
+The renderer accepts a single private IPv4 address or qualified hostname and
+always assigns metrics port 9102. It rejects URLs, explicit ports, wildcard
+addresses, and public IP addresses.
+
 The checked-in `config/agent-pi.yaml` is the deployment configuration for the
 physical Wi-Fi Pi. It retains the SQLite outbox and privacy defaults, uses the
 already registered `network-agent-wifi-01` identity, sends Kafka records to
@@ -374,3 +386,14 @@ publisher. The service retries with exponential backoff capped at 300 seconds,
 so queued rows may not become eligible immediately. Acceptance requires
 `pending: 0`, new PostgreSQL rows whose `event_time` predates `received_at`,
 and no new Pi-keyed `processing_failures` rows.
+
+## Mandatory physical acceptance record
+
+Release acceptance remains incomplete until the actual Pi 3 B+ evidence records
+all of the following: first boot and preflight; manual enablement only after the
+backend is verified; real wired collection; pending SQLite rows while Kafka is
+offline; persistence across a Pi reboot; backlog publication after recovery;
+PostgreSQL ingestion with original event times; a healthy Prometheus Pi target;
+populated Grafana network panels; and both Pi stale and outbox alerts firing and
+resolving. Record exact UTC times and outputs. Workstation tests and the Docker
+agent cannot satisfy this gate.

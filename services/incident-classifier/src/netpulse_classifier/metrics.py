@@ -5,9 +5,7 @@ from __future__ import annotations
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 EVALUATION_OUTCOMES = frozenset({"succeeded", "failed"})
-TRANSITION_STATUSES = frozenset(
-    {"candidate", "open", "ongoing", "recovering", "resolved"}
-)
+TRANSITION_STATUSES = frozenset({"candidate", "open", "ongoing", "recovering", "resolved"})
 PUBLICATION_OUTCOMES = frozenset({"acknowledged", "failed"})
 
 

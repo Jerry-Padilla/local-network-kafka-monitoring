@@ -58,9 +58,7 @@ class IncidentClassifierService:
                 observed_at=at.isoformat(),
             )
         except Exception:
-            self._metrics.record_evaluation(
-                "failed", time.perf_counter() - started_at
-            )
+            self._metrics.record_evaluation("failed", time.perf_counter() - started_at)
             raise
         self._metrics.record_evaluation(
             "succeeded",

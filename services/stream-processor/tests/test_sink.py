@@ -27,7 +27,4 @@ def test_sink_fails_visibly_when_driver_bound_is_exceeded() -> None:
         sink.write_metrics(OversizedBatch(), batch_id=0)
 
     output = generate_latest(registry).decode()
-    assert (
-        'netpulse_streaming_batches_total{outcome="failed",query_kind="metrics"} 1.0'
-        in output
-    )
+    assert 'netpulse_streaming_batches_total{outcome="failed",query_kind="metrics"} 1.0' in output

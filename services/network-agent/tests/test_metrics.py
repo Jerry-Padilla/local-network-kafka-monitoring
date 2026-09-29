@@ -21,10 +21,7 @@ def test_agent_metrics_use_only_fixed_collector_and_outcome_labels() -> None:
         'netpulse_agent_collections_total{collector="router_ping",outcome="succeeded"} 1.0'
         in output
     )
-    assert (
-        'netpulse_agent_collections_total{collector="dns",outcome="failed"} 1.0'
-        in output
-    )
+    assert 'netpulse_agent_collections_total{collector="dns",outcome="failed"} 1.0' in output
     assert "netpulse_agent_last_collection_success_timestamp_seconds 100.0" in output
 
     with pytest.raises(ValueError, match="collector"):

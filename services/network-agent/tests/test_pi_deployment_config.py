@@ -19,23 +19,16 @@ def test_physical_pi_config_uses_authorized_lan_endpoints_and_durable_outbox() -
     assert config.privacy.bssid == "omit"
     assert config.privacy.include_target_addresses is False
     router_endpoints = [
-        (item.endpoint_id, item.address)
-        for item in config.collectors.router_ping.endpoints
+        (item.endpoint_id, item.address) for item in config.collectors.router_ping.endpoints
     ]
-    assert router_endpoints == [
-        ("router", "192.168.1.254")
-    ]
+    assert router_endpoints == [("router", "192.168.1.254")]
     external_endpoints = [
-        (item.endpoint_id, item.address)
-        for item in config.collectors.external_ping.endpoints
+        (item.endpoint_id, item.address) for item in config.collectors.external_ping.endpoints
     ]
-    assert external_endpoints == [
-        ("public-dns-a", "1.1.1.1")
-    ]
+    assert external_endpoints == [("public-dns-a", "1.1.1.1")]
     assert config.collectors.dns.enabled is True
     assert [
-        (item.endpoint_id, item.domain, item.resolver)
-        for item in config.collectors.dns.endpoints
+        (item.endpoint_id, item.domain, item.resolver) for item in config.collectors.dns.endpoints
     ] == [("dns-check", "example.com", "192.168.1.254")]
     assert config.collectors.http.enabled is False
     assert config.collectors.wifi.enabled is False
@@ -74,9 +67,9 @@ def test_compose_uses_docker_fixture_and_internal_metrics_endpoint() -> None:
 
 
 def test_pi_bootstrap_environment_enables_lan_metrics_without_secrets() -> None:
-    template = (
-        ROOT / "deployment" / "pi" / "bootstrap" / "agent.env.example"
-    ).read_text(encoding="utf-8")
+    template = (ROOT / "deployment" / "pi" / "bootstrap" / "agent.env.example").read_text(
+        encoding="utf-8"
+    )
 
     assert "NETPULSE_METRICS_ENABLED=true" in template
     assert "NETPULSE_METRICS_HOST=0.0.0.0" in template
@@ -85,9 +78,9 @@ def test_pi_bootstrap_environment_enables_lan_metrics_without_secrets() -> None:
 
 
 def test_first_boot_requires_and_installs_staged_environment_idempotently() -> None:
-    script = (
-        ROOT / "deployment" / "pi" / "bootstrap" / "first-boot.sh"
-    ).read_text(encoding="utf-8")
+    script = (ROOT / "deployment" / "pi" / "bootstrap" / "first-boot.sh").read_text(
+        encoding="utf-8"
+    )
 
     requirement = 'if [[ ! -f "$BUNDLE/agent.env" ]]'
     completion_guard = 'if [[ -f "$SUCCESS_MARKER" ]]'
@@ -99,14 +92,10 @@ def test_first_boot_requires_and_installs_staged_environment_idempotently() -> N
 
 def test_pi_python_313_can_install_agent_and_observability_packages() -> None:
     agent_project = tomllib.loads(
-        (ROOT / "services" / "network-agent" / "pyproject.toml").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "services" / "network-agent" / "pyproject.toml").read_text(encoding="utf-8")
     )
     observability_project = tomllib.loads(
-        (ROOT / "packages" / "observability" / "pyproject.toml").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "packages" / "observability" / "pyproject.toml").read_text(encoding="utf-8")
     )
 
     assert agent_project["project"]["requires-python"] == ">=3.12,<3.14"

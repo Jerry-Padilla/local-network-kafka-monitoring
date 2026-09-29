@@ -147,6 +147,26 @@ case "$command" in
     "${compose[@]}" --profile test run --rm --no-deps --entrypoint python \
       tests scripts/verify_analytics.py
     ;;
+  monitoring-render)
+    [[ -n "${2:-}" ]] || { echo "monitoring-render requires the Pi IPv4 address or hostname" >&2; exit 2; }
+    python "$repository_root/scripts/render_pi_metrics_target.py" "$2"
+    ;;
+  monitoring-up)
+    "${compose[@]}" up -d --wait postgres
+    "${compose[@]}" run --rm migrate
+    "${compose[@]}" --profile monitoring up -d --wait
+    ;;
+  monitoring-verify)
+    python "$repository_root/scripts/verify_observability.py"
+    ;;
+  monitoring-down)
+    monitoring_services=(grafana prometheus alertmanager kafka-exporter postgres-exporter)
+    "${compose[@]}" --profile monitoring stop "${monitoring_services[@]}"
+    "${compose[@]}" --profile monitoring rm -f "${monitoring_services[@]}"
+    ;;
+  failure-drill)
+    python "$repository_root/scripts/failure_drills.py" "${2:-all}"
+    ;;
   *)
     echo "Unknown command: $command" >&2
     exit 2
