@@ -1,0 +1,11 @@
+{
+  "uid": "netpulse-pipeline-reliability", "title": "NetPulse Pipeline Reliability", "tags": ["netpulse", "sre"],
+  "schemaVersion": 42, "refresh": "15s", "time": {"from": "now-6h", "to": "now"},
+  "panels": [
+    {"id": 1, "title": "Ingestion Throughput", "type": "timeseries", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "targets": [{"expr": "sum by (outcome) (rate(netpulse_ingestion_records_total[5m]))", "legendFormat": "{{outcome}}"}]},
+    {"id": 2, "title": "Consumer Lag", "type": "timeseries", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "targets": [{"expr": "netpulse:kafka_consumer_lag", "legendFormat": "records"}]},
+    {"id": 3, "title": "Ingestion Success Ratio", "type": "gauge", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8}, "targets": [{"expr": "netpulse:ingestion_success_ratio:5m", "legendFormat": "success"}]},
+    {"id": 4, "title": "p95 Processing", "type": "timeseries", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8}, "targets": [{"expr": "netpulse:ingestion_processing_p95_seconds:5m", "legendFormat": "p95"}]},
+    {"id": 5, "title": "Pipeline Status", "type": "table", "datasource": {"uid": "postgres"}, "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8}, "targets": [{"format": "table", "rawQuery": true, "rawSql": "SELECT * FROM v_sre_pipeline_status"}]}
+  ]
+}

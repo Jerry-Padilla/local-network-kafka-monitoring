@@ -1,0 +1,10 @@
+{
+  "uid": "netpulse-platform-health", "title": "NetPulse Platform Health", "tags": ["netpulse", "sre"],
+  "schemaVersion": 42, "refresh": "15s", "time": {"from": "now-6h", "to": "now"},
+  "panels": [
+    {"id": 1, "title": "Scrape Targets", "type": "stat", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0}, "targets": [{"expr": "sum(up)", "legendFormat": "healthy"}]},
+    {"id": 2, "title": "PostgreSQL Health", "type": "stat", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0}, "targets": [{"expr": "pg_up", "legendFormat": "PostgreSQL"}]},
+    {"id": 3, "title": "Kafka Brokers", "type": "stat", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0}, "targets": [{"expr": "kafka_brokers", "legendFormat": "brokers"}]},
+    {"id": 4, "title": "Active Alerts", "type": "timeseries", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}, "targets": [{"expr": "sum by (alertname, severity) (ALERTS{alertstate=\"firing\"})", "legendFormat": "{{alertname}} {{severity}}"}]}
+  ]
+}

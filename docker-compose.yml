@@ -312,6 +312,7 @@ services:
     volumes:
       - ./deployment/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./deployment/observability/prometheus/pi-targets.json:/etc/prometheus/pi-targets.json:ro
+      - ./deployment/observability/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     healthcheck:
       test: ["CMD", "/bin/promtool", "check", "ready"]
@@ -340,6 +341,7 @@ services:
       - "127.0.0.1:3000:3000"
     volumes:
       - ./deployment/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deployment/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]

@@ -1,0 +1,91 @@
+groups:
+  - name: netpulse_platform
+    rules:
+      - alert: NetPulseTargetDown
+        expr: up{required="true"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Required NetPulse target is unavailable"
+          impact: "Monitoring or the ingestion path may be impaired."
+          likely_cause: "A required container stopped, failed health checks, or lost network connectivity."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/target-down.md"
+      - alert: NetPulsePostgresUnavailable
+        expr: up{job="postgres-exporter"} == 1 and pg_up == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "PostgreSQL is unavailable to its exporter"
+          impact: "Durable ingestion and reporting are unavailable."
+          likely_cause: "PostgreSQL is stopped, starting, or rejecting the monitoring login."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/postgres-unavailable.md"
+      - alert: NetPulseKafkaConsumerLag
+        expr: up{job="kafka-exporter"} == 1 and netpulse:kafka_consumer_lag > 100
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "NetPulse ingestion consumer lag is elevated"
+          impact: "Measurements are reaching storage later than expected."
+          likely_cause: "Ingestion is stopped, unhealthy, or slower than incoming traffic."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/kafka-lag.md"
+      - alert: NetPulsePipelineStale
+        expr: sum(rate(netpulse_ingestion_records_total[5m])) > 0 and netpulse:ingestion_freshness_seconds > 60
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "NetPulse ingestion stopped completing active traffic"
+          impact: "New network observations are not becoming durable on time."
+          likely_cause: "Database, Kafka acknowledgement, or ingestion processing is blocked."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/pipeline-stale.md"
+      - alert: NetPulseDeadLetterGrowth
+        expr: increase(netpulse_ingestion_records_total{outcome="dead_lettered"}[10m]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "NetPulse dead-letter traffic is growing"
+          impact: "One or more measurements were rejected and excluded from normal processing."
+          likely_cause: "A producer emitted malformed or schema-incompatible events."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/dead-letter-growth.md"
+      - alert: NetPulseIngestionFailures
+        expr: increase(netpulse_ingestion_records_total{outcome="failed"}[5m]) > 0
+        labels: {severity: critical}
+        annotations:
+          summary: "NetPulse ingestion failures detected"
+          impact: "Valid events may be delayed while retries occur."
+          likely_cause: "A transient Kafka or PostgreSQL operation failed."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/pipeline-stale.md"
+      - alert: NetPulseClassifierStalled
+        expr: up{job="incident-classifier"} == 1 and time() - netpulse_classifier_last_success_timestamp_seconds > 120
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Incident classification is stale"
+          impact: "New conditions may not become incidents promptly."
+          likely_cause: "The classifier cycle is failing or blocked on PostgreSQL."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/classifier-stalled.md"
+      - alert: NetPulseIncidentOutboxBacklog
+        expr: netpulse_classifier_pending_publications > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Incident publication outbox has a backlog"
+          impact: "Stored incident transitions are delayed on Kafka."
+          likely_cause: "Kafka publication is unavailable or acknowledgements are failing."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/incident-outbox-backlog.md"
+      - alert: NetPulsePiStale
+        expr: count(up{job="pi-agent"}) > 0 and (up{job="pi-agent"} == 0 or time() - netpulse_agent_last_collection_success_timestamp_seconds{job="pi-agent"} > 120)
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Required Raspberry Pi collector is stale"
+          impact: "The wired reference vantage point is not producing current observations."
+          likely_cause: "The Pi service, host, Ethernet link, or metrics endpoint is unavailable."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/pi-stale.md"
+      - alert: NetPulsePiOutboxBacklog
+        expr: up{job="pi-agent"} == 1 and netpulse_agent_outbox_depth{job="pi-agent"} > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Raspberry Pi delivery outbox is accumulating"
+          impact: "Pi measurements are locally durable but delayed in Kafka."
+          likely_cause: "Kafka is unreachable from the Pi or publication is failing."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/pi-outbox-backlog.md"

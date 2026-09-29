@@ -129,3 +129,145 @@ def test_grafana_datasources_are_provisioned_from_environment() -> None:
     assert by_uid["postgres"]["user"] == "netpulse_grafana"
     assert by_uid["postgres"]["secureJsonData"]["password"] == "$GRAFANA_POSTGRES_PASSWORD"
     assert by_uid["postgres"]["jsonData"]["database"] == "$POSTGRES_DB"
+
+
+def test_recording_rules_cover_objectives_and_zero_traffic_guards() -> None:
+    rules = yaml.safe_load(
+        (OBSERVABILITY / "prometheus" / "rules" / "recording.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    records = {
+        rule["record"]: rule["expr"]
+        for group in rules["groups"]
+        for rule in group["rules"]
+    }
+
+    assert {
+        "netpulse:ingestion_success_ratio:5m",
+        "netpulse:ingestion_processing_p95_seconds:5m",
+        "netpulse:ingestion_freshness_seconds",
+        "netpulse:kafka_consumer_lag",
+        "netpulse:ingestion_error_budget_burn:5m",
+    } <= records.keys()
+    assert "clamp_min" in records["netpulse:ingestion_success_ratio:5m"]
+    assert "histogram_quantile(0.95" in records[
+        "netpulse:ingestion_processing_p95_seconds:5m"
+    ]
+
+
+def test_alerts_are_actionable_and_empty_pi_discovery_is_safe() -> None:
+    rules = yaml.safe_load(
+        (OBSERVABILITY / "prometheus" / "rules" / "alerts.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    alerts = {
+        rule["alert"]: rule
+        for group in rules["groups"]
+        for rule in group["rules"]
+    }
+    expected = {
+        "NetPulseTargetDown",
+        "NetPulsePostgresUnavailable",
+        "NetPulseKafkaConsumerLag",
+        "NetPulsePipelineStale",
+        "NetPulseDeadLetterGrowth",
+        "NetPulseIngestionFailures",
+        "NetPulseClassifierStalled",
+        "NetPulseIncidentOutboxBacklog",
+        "NetPulsePiStale",
+        "NetPulsePiOutboxBacklog",
+    }
+    assert expected <= alerts.keys()
+    for name in expected:
+        alert = alerts[name]
+        assert alert["labels"]["severity"] in {"warning", "critical"}
+        assert {"summary", "impact", "likely_cause", "runbook_url"} <= alert[
+            "annotations"
+        ].keys()
+        assert alert["annotations"]["runbook_url"].startswith("https://github.com/")
+    assert 'required="true"' in alerts["NetPulseTargetDown"]["expr"]
+    assert 'count(up{job="pi-agent"}) > 0' in alerts["NetPulsePiStale"]["expr"]
+    assert json.loads(
+        (OBSERVABILITY / "prometheus" / "pi-targets.json").read_text(encoding="utf-8")
+    ) == []
+
+
+def test_three_dashboards_are_provisioned_with_required_panels_and_datasources() -> None:
+    provider = yaml.safe_load(
+        (
+            OBSERVABILITY
+            / "grafana"
+            / "provisioning"
+            / "dashboards"
+            / "provider.yml"
+        ).read_text(encoding="utf-8")
+    )
+    assert provider["providers"][0]["options"]["path"] == "/var/lib/grafana/dashboards"
+
+    expectations = {
+        "platform-health.json": (
+            "netpulse-platform-health",
+            {"Scrape Targets", "PostgreSQL Health", "Kafka Brokers"},
+        ),
+        "pipeline-reliability.json": (
+            "netpulse-pipeline-reliability",
+            {"Ingestion Throughput", "Consumer Lag", "Ingestion Success Ratio", "p95 Processing"},
+        ),
+        "network-reliability.json": (
+            "netpulse-network-reliability",
+            {"Probe Success", "Agent Freshness", "Current Incidents", "Pi Outbox"},
+        ),
+    }
+    allowed_views = {
+        "v_daily_probe_reliability",
+        "v_incident_summary",
+        "v_sre_agent_status",
+        "v_sre_pipeline_status",
+    }
+    for filename, (uid, required_titles) in expectations.items():
+        dashboard = json.loads(
+            (OBSERVABILITY / "grafana" / "dashboards" / filename).read_text(
+                encoding="utf-8"
+            )
+        )
+        assert dashboard["uid"] == uid
+        assert dashboard["title"].startswith("NetPulse")
+        titles = {panel["title"] for panel in dashboard["panels"]}
+        assert required_titles <= titles
+        for panel in dashboard["panels"]:
+            assert panel["datasource"]["uid"] in {"prometheus", "postgres"}
+            for target in panel.get("targets", []):
+                if "rawSql" in target:
+                    sql_text = target["rawSql"].lower()
+                    assert any(view in sql_text for view in allowed_views)
+                    assert " from raw_events" not in sql_text
+                    assert " from agents" not in sql_text
+
+
+def test_every_alert_runbook_has_operational_sections_and_no_destructive_reset() -> None:
+    runbooks = (
+        "target-down.md",
+        "kafka-lag.md",
+        "postgres-unavailable.md",
+        "pipeline-stale.md",
+        "dead-letter-growth.md",
+        "classifier-stalled.md",
+        "incident-outbox-backlog.md",
+        "pi-stale.md",
+        "pi-outbox-backlog.md",
+    )
+    for filename in runbooks:
+        text = (ROOT / "docs" / "runbooks" / filename).read_text(encoding="utf-8")
+        for heading in (
+            "## Symptoms",
+            "## Safety",
+            "## Diagnosis",
+            "## Remediation",
+            "## Recovery verification",
+            "## Escalation",
+        ):
+            assert heading in text
+        assert "docker compose down -v" not in text
+        assert "reset --hard" not in text

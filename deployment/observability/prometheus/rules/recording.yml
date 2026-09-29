@@ -1,0 +1,16 @@
+groups:
+  - name: netpulse_ingestion_objectives
+    interval: 15s
+    rules:
+      - record: netpulse:ingestion_success_ratio:5m
+        expr: |
+          (sum(rate(netpulse_ingestion_records_total{outcome=~"valid|duplicate"}[5m])) or vector(0))
+          / clamp_min(sum(rate(netpulse_ingestion_records_total[5m])) or vector(0), 0.000001)
+      - record: netpulse:ingestion_processing_p95_seconds:5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(netpulse_ingestion_processing_duration_seconds_bucket[5m])))
+      - record: netpulse:ingestion_freshness_seconds
+        expr: clamp_min(time() - netpulse_ingestion_last_success_timestamp_seconds, 0)
+      - record: netpulse:kafka_consumer_lag
+        expr: sum(kafka_consumergroup_lag{consumergroup="netpulse-ingestion-v1"}) or vector(0)
+      - record: netpulse:ingestion_error_budget_burn:5m
+        expr: clamp_min((1 - netpulse:ingestion_success_ratio:5m) / 0.01, 0)

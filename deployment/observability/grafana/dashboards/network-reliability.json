@@ -1,0 +1,10 @@
+{
+  "uid": "netpulse-network-reliability", "title": "NetPulse Network Reliability", "tags": ["netpulse", "sre"],
+  "schemaVersion": 42, "refresh": "30s", "time": {"from": "now-24h", "to": "now"},
+  "panels": [
+    {"id": 1, "title": "Probe Success", "type": "timeseries", "datasource": {"uid": "postgres"}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "targets": [{"format": "time_series", "rawQuery": true, "rawSql": "SELECT bucket_date AS time, success_ratio AS value, agent_id AS metric FROM v_daily_probe_reliability WHERE $__timeFilter(bucket_date) ORDER BY bucket_date"}]},
+    {"id": 2, "title": "Agent Freshness", "type": "table", "datasource": {"uid": "postgres"}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "targets": [{"format": "table", "rawQuery": true, "rawSql": "SELECT * FROM v_sre_agent_status ORDER BY agent_id"}]},
+    {"id": 3, "title": "Current Incidents", "type": "table", "datasource": {"uid": "postgres"}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "targets": [{"format": "table", "rawQuery": true, "rawSql": "SELECT * FROM v_incident_summary ORDER BY opened_at DESC"}]},
+    {"id": 4, "title": "Pi Outbox", "type": "timeseries", "datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "targets": [{"expr": "netpulse_agent_outbox_depth{job=\"pi-agent\"}", "legendFormat": "pending"}]}
+  ]
+}
