@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "netpulse-observability"
 version = "0.1.0"
 description = "Shared Prometheus HTTP lifecycle support for NetPulse services"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 dependencies = [
   "prometheus-client==0.26.0",
 ]

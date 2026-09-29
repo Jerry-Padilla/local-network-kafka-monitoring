@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 
 import structlog
+from prometheus_client import CollectorRegistry
 
 from netpulse_agent.collector_types import Collector
 from netpulse_agent.collectors import (
@@ -17,6 +18,7 @@ from netpulse_agent.collectors import (
 )
 from netpulse_agent.config import AgentConfig
 from netpulse_agent.events import EventFactory
+from netpulse_agent.metrics import AgentMetrics
 from netpulse_agent.outbox import SQLiteOutbox
 from netpulse_agent.publisher import OutboxDeliveryWorker, OutboxPublisher
 from netpulse_agent.scheduler import CollectionErrorTracker, CollectorWorker
@@ -79,17 +81,29 @@ class AgentRuntime:
         outbox: SQLiteOutbox | None = None,
         publisher: OutboxPublisher | None = None,
         collectors: list[Collector] | None = None,
+        metrics: AgentMetrics | None = None,
     ) -> None:
         self.config = config
         self.outbox = outbox or SQLiteOutbox(config.outbox)
         self.errors = CollectionErrorTracker()
+        self.metrics = metrics or AgentMetrics(CollectorRegistry())
         self.event_factory = EventFactory(config.agent, self.outbox.next_sequence)
         active_collectors = collectors or build_collectors(config, self.outbox, self.errors)
         self.workers = [
-            CollectorWorker(item, self.event_factory, self.outbox, self.errors)
+            CollectorWorker(
+                item,
+                self.event_factory,
+                self.outbox,
+                self.errors,
+                self.metrics,
+            )
             for item in active_collectors
         ]
-        self.publisher = publisher or OutboxPublisher(config.kafka, self.outbox)
+        self.publisher = publisher or OutboxPublisher(
+            config.kafka,
+            self.outbox,
+            metrics=self.metrics,
+        )
         self.delivery_worker = OutboxDeliveryWorker(
             self.publisher,
             config.kafka.poll_interval_seconds,

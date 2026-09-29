@@ -47,8 +47,7 @@ cat > "$fixture_root/bin/fixture-netpulse-agent" <<'EOF'
 test "$1" = --config
 test "$3" = validate-config
 test "$(cat "$2")" != invalid
-if [[ -n "${FIXTURE_RUNUSER_USER:-}" ]]; then
-  test "$FIXTURE_RUNUSER_USER" = netpulse
+if [[ -n "${NETPULSE_AGENT_ROLE:-}" ]]; then
   test "${NETPULSE_AGENT_ROLE:-}" = wifi_observer
 fi
 EOF
@@ -57,7 +56,6 @@ cat > "$fixture_root/bin/runuser" <<'EOF'
 test "$1" = -u
 test "$2" = netpulse
 test "$3" = --
-export FIXTURE_RUNUSER_USER="$2"
 shift 3
 exec "$@"
 EOF

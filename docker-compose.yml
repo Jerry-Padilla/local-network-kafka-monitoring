@@ -131,8 +131,11 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       NETPULSE_OUTBOX_PATH: /var/lib/netpulse-agent/outbox.db
+      NETPULSE_METRICS_ENABLED: "true"
+      NETPULSE_METRICS_HOST: 0.0.0.0
+      NETPULSE_METRICS_PORT: "9102"
     volumes:
-      - ./config/agent.example.yaml:/etc/netpulse-agent/agent.yaml:ro
+      - ./config/agent-docker.yaml:/etc/netpulse-agent/agent.yaml:ro
       - agent-outbox:/var/lib/netpulse-agent
     restart: unless-stopped
     networks: [backend]

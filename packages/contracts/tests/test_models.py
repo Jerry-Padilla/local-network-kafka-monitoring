@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
-from netpulse_contracts.models import Incident, NetworkMeasurement
+from netpulse_contracts.models import AgentRole, Incident, NetworkMeasurement
 from netpulse_contracts.validation import EventValidationError, validate_event
 
 
@@ -35,6 +35,16 @@ def test_additive_fields_are_preserved() -> None:
 
     assert isinstance(event, NetworkMeasurement)
     assert event.model_dump()["future_optional_metric"] == 123
+
+
+def test_container_probe_is_a_supported_agent_role() -> None:
+    payload = measurement_payload()
+    payload["agent_id"] = "container-observer-01"
+    payload["agent_role"] = "container_probe"
+
+    event = NetworkMeasurement.model_validate(payload)
+
+    assert event.agent_role == AgentRole.CONTAINER_PROBE
 
 
 def test_high_latency_and_loss_are_valid_not_contract_errors() -> None:

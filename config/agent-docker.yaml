@@ -1,11 +1,11 @@
 agent:
-  agent_id: network-agent-ethernet-01
-  role: wired_reference
+  agent_id: container-observer-01
+  role: container_probe
   source_version: 0.2.0
 
 kafka:
-  bootstrap_servers: 192.168.1.198:29092
-  client_id: netpulse-network-agent-ethernet-01
+  bootstrap_servers: kafka:9092
+  client_id: netpulse-container-observer-01
   compression: zstd
   delivery_timeout_seconds: 10
   poll_interval_seconds: 1
@@ -21,7 +21,7 @@ outbox:
 privacy:
   ssid: omit
   bssid: omit
-  hash_salt: replace-this-with-a-private-device-specific-salt
+  hash_salt: docker-fixture-non-secret-salt
   include_target_addresses: false
 
 collectors:
@@ -32,7 +32,7 @@ collectors:
     timeout_seconds: 2
     endpoints:
       - endpoint_id: router
-        address: 192.168.1.254
+        address: kafka
   external_ping:
     enabled: true
     interval_seconds: 5
@@ -40,15 +40,15 @@ collectors:
     timeout_seconds: 2
     endpoints:
       - endpoint_id: public-dns-a
-        address: 1.1.1.1
+        address: postgres
   dns:
     enabled: true
     interval_seconds: 15
     timeout_seconds: 3
     endpoints:
       - endpoint_id: dns-check
-        domain: example.com
-        resolver: 192.168.1.254
+        domain: kafka
+        resolver: 127.0.0.11
         record_type: A
   http:
     enabled: false

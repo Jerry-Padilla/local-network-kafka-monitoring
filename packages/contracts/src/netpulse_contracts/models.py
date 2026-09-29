@@ -17,6 +17,7 @@ class AgentRole(StrEnum):
 
     WIRED_REFERENCE = "wired_reference"
     WIFI_OBSERVER = "wifi_observer"
+    CONTAINER_PROBE = "container_probe"
     SYSTEM_CLASSIFIER = "system_classifier"
 
 

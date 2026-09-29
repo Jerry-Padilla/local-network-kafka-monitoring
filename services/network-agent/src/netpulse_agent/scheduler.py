@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from collections import deque
 from datetime import UTC, datetime
 
@@ -10,6 +11,7 @@ import structlog
 
 from netpulse_agent.collector_types import Collector
 from netpulse_agent.events import EventFactory
+from netpulse_agent.metrics import AgentMetrics
 from netpulse_agent.outbox import SQLiteOutbox
 
 LOGGER = structlog.get_logger()
@@ -42,11 +44,13 @@ class CollectorWorker:
         event_factory: EventFactory,
         outbox: SQLiteOutbox,
         errors: CollectionErrorTracker,
+        metrics: AgentMetrics,
     ) -> None:
         self._collector = collector
         self._event_factory = event_factory
         self._outbox = outbox
         self._errors = errors
+        self._metrics = metrics
 
     def collect_once(self) -> int:
         """Collect and durably enqueue one invocation."""
@@ -56,9 +60,19 @@ class CollectorWorker:
                 event = self._event_factory.build(collected)
                 if self._outbox.enqueue(event):
                     enqueued += 1
+            self._metrics.record_collection(
+                self._collector.name,
+                "succeeded",
+                timestamp_seconds=time.time(),
+            )
         except Exception as error:
             self._errors.add(self._collector.name, error)
+            self._metrics.record_collection(self._collector.name, "failed")
             LOGGER.exception("collector_failed", collector=self._collector.name)
+        self._metrics.set_outbox(
+            self._outbox.depth(),
+            self._outbox.oldest_pending_age_seconds(),
+        )
         return enqueued
 
     def run(self, stop_event: threading.Event) -> None:

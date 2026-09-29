@@ -11,8 +11,11 @@ from collections.abc import Sequence
 from dataclasses import asdict
 
 from netpulse_contracts.logging import configure_logging
+from netpulse_observability import MetricsHttpConfig, MetricsServer
+from prometheus_client import CollectorRegistry
 
 from netpulse_agent.config import AgentConfigurationError, load_config
+from netpulse_agent.metrics import AgentMetrics
 from netpulse_agent.outbox import SQLiteOutbox
 from netpulse_agent.runtime import AgentRuntime
 
@@ -51,6 +54,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(asdict(stats), sort_keys=True))
         return 0
 
+    if args.command == "run":
+        registry = CollectorRegistry()
+        metrics = AgentMetrics(registry)
+        metrics_server = MetricsServer(
+            MetricsHttpConfig.from_env(default_port=9102),
+            registry,
+        )
+        runtime = AgentRuntime(config, metrics=metrics)
+        metrics_server.start()
+        stop_event = threading.Event()
+
+        def request_stop(_signum: int, _frame: object) -> None:
+            stop_event.set()
+
+        signal.signal(signal.SIGINT, request_stop)
+        signal.signal(signal.SIGTERM, request_stop)
+        try:
+            runtime.run(stop_event)
+        finally:
+            metrics_server.stop()
+        return 0
+
     runtime = AgentRuntime(config)
     if args.command == "collect-once":
         enqueued = runtime.collect_once()
@@ -74,12 +99,4 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"acknowledged": acknowledged, "failed": failed}, sort_keys=True))
         return 1 if failed else 0
 
-    stop_event = threading.Event()
-
-    def request_stop(_signum: int, _frame: object) -> None:
-        stop_event.set()
-
-    signal.signal(signal.SIGINT, request_stop)
-    signal.signal(signal.SIGTERM, request_stop)
-    runtime.run(stop_event)
-    return 0
+    raise AssertionError(f"unhandled command: {args.command}")

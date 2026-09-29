@@ -11,9 +11,11 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY packages/contracts /app/packages/contracts
+COPY packages/observability /app/packages/observability
 COPY services/network-agent /app/services/network-agent
 RUN python -m pip install --no-cache-dir \
       /app/packages/contracts \
+      /app/packages/observability \
       /app/services/network-agent
 
 RUN addgroup --system --gid 10001 netpulse \

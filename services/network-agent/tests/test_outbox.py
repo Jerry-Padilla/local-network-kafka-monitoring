@@ -20,6 +20,19 @@ def test_enqueue_is_deduplicated_and_sequence_persists(
     assert outbox.next_sequence() == 1
 
 
+def test_oldest_pending_age_tracks_enqueue_and_delivery(
+    outbox: SQLiteOutbox,
+    measurement_event: Event,
+) -> None:
+    assert outbox.oldest_pending_age_seconds(now=100) is None
+    outbox.enqueue(measurement_event, now=80)
+
+    assert outbox.oldest_pending_age_seconds(now=100) == 20
+
+    outbox.mark_delivered(measurement_event.event_id, now=101)
+    assert outbox.oldest_pending_age_seconds(now=102) is None
+
+
 def test_failure_backoff_delivery_and_acknowledged_pruning(
     outbox: SQLiteOutbox,
     measurement_event: Event,

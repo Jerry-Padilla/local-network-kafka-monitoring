@@ -11,6 +11,8 @@ dependencies = [
   "confluent-kafka==2.8.2",
   "dnspython==2.7.0",
   "netpulse-contracts==0.1.0",
+  "netpulse-observability==0.1.0",
+  "prometheus-client==0.26.0",
   "pydantic==2.11.1",
   "PyYAML==6.0.2",
   "structlog==25.2.0",

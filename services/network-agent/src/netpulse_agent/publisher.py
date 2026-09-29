@@ -11,6 +11,7 @@ import structlog
 from confluent_kafka import KafkaError, KafkaException, Message, Producer
 
 from netpulse_agent.config import KafkaConfig
+from netpulse_agent.metrics import AgentMetrics
 from netpulse_agent.outbox import OutboxRecord, SQLiteOutbox
 
 LOGGER = structlog.get_logger()
@@ -38,10 +39,12 @@ class OutboxPublisher:
         self,
         config: KafkaConfig,
         outbox: SQLiteOutbox,
+        metrics: AgentMetrics,
         producer: ProducerLike | None = None,
     ) -> None:
         self._config = config
         self._outbox = outbox
+        self._metrics = metrics
         self._producer = producer or Producer(
             {
                 "bootstrap.servers": config.bootstrap_servers,
@@ -63,9 +66,17 @@ class OutboxPublisher:
         for record in self._outbox.ready():
             if self._publish_one(record):
                 acknowledged += 1
+                self._metrics.record_publication(
+                    "acknowledged", timestamp_seconds=time.time()
+                )
             else:
                 failed += 1
+                self._metrics.record_publication("failed")
         self._outbox.prune_acknowledged()
+        self._metrics.set_outbox(
+            self._outbox.depth(),
+            self._outbox.oldest_pending_age_seconds(),
+        )
         return acknowledged, failed
 
     def _publish_one(self, record: OutboxRecord) -> bool:

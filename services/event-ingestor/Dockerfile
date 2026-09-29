@@ -7,9 +7,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY packages/contracts /app/packages/contracts
+COPY packages/observability /app/packages/observability
 COPY services/event-ingestor /app/services/event-ingestor
 RUN python -m pip install --no-cache-dir \
       /app/packages/contracts \
+      /app/packages/observability \
       /app/services/event-ingestor
 
 COPY database /app/database

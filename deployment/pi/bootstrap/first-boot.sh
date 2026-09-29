@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-BUNDLE=/boot/firmware/netpulse-bootstrap
-STATE_DIR=/var/lib/netpulse-bootstrap
-LOG_FILE=/var/log/netpulse-bootstrap.log
+ROOT_PREFIX=${NETPULSE_BOOTSTRAP_ROOT:-}
+BUNDLE=${NETPULSE_BOOTSTRAP_BUNDLE:-${ROOT_PREFIX}/boot/firmware/netpulse-bootstrap}
+STATE_DIR="${ROOT_PREFIX}/var/lib/netpulse-bootstrap"
+LOG_FILE="${ROOT_PREFIX}/var/log/netpulse-bootstrap.log"
 SUCCESS_MARKER="$STATE_DIR/succeeded"
 FAILED_MARKER="$STATE_DIR/failed"
 
-install -d -o root -g root -m 0755 "$STATE_DIR"
+install -d -m 0755 "$STATE_DIR" "$(dirname "$LOG_FILE")"
+if [[ -z "$ROOT_PREFIX" ]]; then
+  chown root:root "$STATE_DIR" "$(dirname "$LOG_FILE")"
+fi
 touch "$LOG_FILE"
 chmod 0644 "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
@@ -25,6 +29,11 @@ if [[ -f "$SUCCESS_MARKER" ]]; then
   exit 0
 fi
 
+if [[ ! -f "$BUNDLE/agent.env" ]]; then
+  echo "Missing $BUNDLE/agent.env; copy agent.env.example to agent.env before first boot." >&2
+  exit 2
+fi
+
 apt-get update
 apt-get install -y --no-install-recommends \
   python3 python3-venv iputils-ping netcat-openbsd openssl
@@ -39,7 +48,8 @@ install -d -o netpulse -g netpulse -m 0750 /var/lib/netpulse-agent
 python3 -m venv /opt/netpulse-agent/venv
 /opt/netpulse-agent/venv/bin/pip install --upgrade pip
 /opt/netpulse-agent/venv/bin/pip install \
-  "$BUNDLE/packages/contracts" "$BUNDLE/services/network-agent"
+  "$BUNDLE/packages/contracts" "$BUNDLE/packages/observability" \
+  "$BUNDLE/services/network-agent"
 
 hash_salt="$(openssl rand -hex 32)"
 

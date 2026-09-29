@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
+from netpulse_agent import cli
 from netpulse_agent.cli import main
 from netpulse_agent.config import AgentConfig
 from netpulse_agent.outbox import SQLiteOutbox
@@ -103,3 +105,34 @@ def test_build_collectors_respects_every_enabled_flag(tmp_path: Path) -> None:
         "heartbeat",
         "speed_test",
     ]
+
+
+def test_metrics_server_lifecycle_applies_only_to_run(tmp_path: Path, monkeypatch) -> None:
+    path = _write_config(tmp_path)
+
+    class FakeRuntime:
+        def __init__(self, _config, metrics=None) -> None:
+            self.metrics = metrics
+
+        def run(self, _stop_event) -> None:
+            return None
+
+    class FakeMetricsServer:
+        instances: ClassVar[list[FakeMetricsServer]] = []
+
+        def __init__(self, _config, _registry) -> None:
+            self.calls: list[str] = []
+            type(self).instances.append(self)
+
+        def start(self) -> None:
+            self.calls.append("start")
+
+        def stop(self) -> None:
+            self.calls.append("stop")
+
+    monkeypatch.setattr(cli, "AgentRuntime", FakeRuntime)
+    monkeypatch.setattr(cli, "MetricsServer", FakeMetricsServer)
+    monkeypatch.setattr(cli.signal, "signal", lambda *_args: None)
+
+    assert main(["--config", str(path), "run"]) == 0
+    assert FakeMetricsServer.instances[-1].calls == ["start", "stop"]

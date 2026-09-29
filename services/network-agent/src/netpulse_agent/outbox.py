@@ -217,6 +217,17 @@ class SQLiteOutbox:
             ).fetchone()
             return int(row[0]) if row is not None else 0
 
+    def oldest_pending_age_seconds(self, now: float | None = None) -> float | None:
+        """Return the non-negative age of the oldest undelivered record."""
+        timestamp = time.time() if now is None else now
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT min(created_at) FROM outbox_events WHERE delivered_at IS NULL"
+            ).fetchone()
+        if row is None or row[0] is None:
+            return None
+        return max(0.0, timestamp - float(row[0]))
+
     def stats(self) -> OutboxStats:
         """Return queue and storage counters without event payloads."""
         with self._connect() as connection:
