@@ -157,6 +157,7 @@ def test_alerts_are_actionable_and_empty_pi_discovery_is_safe() -> None:
         assert alert["annotations"]["runbook_url"].startswith("https://github.com/")
     assert 'required="true"' in alerts["NetPulseTargetDown"]["expr"]
     assert 'count(up{job="pi-agent"}) > 0' in alerts["NetPulsePiStale"]["expr"]
+    assert "and on()" in alerts["NetPulsePiStale"]["expr"]
     assert (
         json.loads((OBSERVABILITY / "prometheus" / "pi-targets.json").read_text(encoding="utf-8"))
         == []
@@ -207,6 +208,12 @@ def test_three_dashboards_are_provisioned_with_required_panels_and_datasources()
                     assert any(view in sql_text for view in allowed_views)
                     assert " from raw_events" not in sql_text
                     assert " from agents" not in sql_text
+    network = (OBSERVABILITY / "grafana" / "dashboards" / "network-reliability.json").read_text(
+        encoding="utf-8"
+    )
+    assert "date_utc" in network and "success_rate_pct" in network
+    assert "start_time" in network
+    assert "bucket_date" not in network and "opened_at" not in network
 
 
 def test_every_alert_runbook_has_operational_sections_and_no_destructive_reset() -> None:

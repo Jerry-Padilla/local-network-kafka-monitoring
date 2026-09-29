@@ -178,8 +178,8 @@ always assigns metrics port 9102. It rejects URLs, explicit ports, wildcard
 addresses, and public IP addresses.
 
 The checked-in `config/agent-pi.yaml` is the deployment configuration for the
-physical Wi-Fi Pi. It retains the SQLite outbox and privacy defaults, uses the
-already registered `network-agent-wifi-01` identity, sends Kafka records to
+physical wired Pi. It retains the SQLite outbox and privacy defaults, uses the
+already registered `network-agent-ethernet-01` identity, sends Kafka records to
 `192.168.1.198:29092`, pings the router at `192.168.1.254`, and uses `1.1.1.1`
 for the external reachability measurement. DNS, HTTP, and speed tests remain
 disabled so the deployment contains no documentation-only or unauthorized
@@ -331,26 +331,27 @@ docker compose logs --since 10m event-ingestor |
   Select-String 'partitions_assigned|record_processed|record_processing_failed'
 ```
 
-The records must use key and `agent_id` `network-agent-wifi-01`. Measurement
-records must include `router_ping`, `external_ping`, and `wifi_diagnostics`.
+The records must use key and `agent_id` `network-agent-ethernet-01`. Measurement
+records must include `router_ping` and `external_ping`; Wi-Fi diagnostics are
+intentionally disabled on this wired reference collector.
 The following PostgreSQL checks prove typed persistence and preservation of the
 original collection timestamp:
 
 ```powershell
 docker compose exec -T postgres psql -U netpulse_admin -d netpulse `
-  -P pager=off -c "SELECT r.received_at,r.event_time,r.published_time,r.event_type,r.agent_id,r.source_topic,r.source_partition,r.source_offset,(r.payload->>'event_time')::timestamptz AS payload_event_time,(r.event_time=(r.payload->>'event_time')::timestamptz) AS timestamp_preserved FROM raw_events r WHERE r.agent_id='network-agent-wifi-01' ORDER BY r.received_at DESC LIMIT 30;"
+  -P pager=off -c "SELECT r.received_at,r.event_time,r.published_time,r.event_type,r.agent_id,r.source_topic,r.source_partition,r.source_offset,(r.payload->>'event_time')::timestamptz AS payload_event_time,(r.event_time=(r.payload->>'event_time')::timestamptz) AS timestamp_preserved FROM raw_events r WHERE r.agent_id='network-agent-ethernet-01' ORDER BY r.received_at DESC LIMIT 30;"
 
 docker compose exec -T postgres psql -U netpulse_admin -d netpulse `
-  -P pager=off -c "SELECT h.event_time,h.agent_id,h.hostname,h.agent_version,h.network_interfaces,h.collection_errors,h.local_queue_depth,r.received_at FROM agent_heartbeats h JOIN raw_events r USING(event_id) WHERE h.agent_id='network-agent-wifi-01' ORDER BY h.event_time DESC LIMIT 10;"
+  -P pager=off -c "SELECT h.event_time,h.agent_id,h.hostname,h.agent_version,h.network_interfaces,h.collection_errors,h.local_queue_depth,r.received_at FROM agent_heartbeats h JOIN raw_events r USING(event_id) WHERE h.agent_id='network-agent-ethernet-01' ORDER BY h.event_time DESC LIMIT 10;"
 
 docker compose exec -T postgres psql -U netpulse_admin -d netpulse `
-  -P pager=off -c "SELECT m.event_time,r.received_at,m.agent_id,m.measurement_type,m.target_id,m.success,m.latency_ms,m.packet_loss_pct,m.signal_dbm,m.connected,(m.event_time=r.event_time) AS typed_time_matches_raw,(r.event_time=(r.payload->>'event_time')::timestamptz) AS original_time_preserved FROM network_measurements m JOIN raw_events r USING(event_id) WHERE m.agent_id='network-agent-wifi-01' ORDER BY m.event_time DESC LIMIT 50;"
+  -P pager=off -c "SELECT m.event_time,r.received_at,m.agent_id,m.measurement_type,m.target_id,m.success,m.latency_ms,m.packet_loss_pct,m.signal_dbm,m.connected,(m.event_time=r.event_time) AS typed_time_matches_raw,(r.event_time=(r.payload->>'event_time')::timestamptz) AS original_time_preserved FROM network_measurements m JOIN raw_events r USING(event_id) WHERE m.agent_id='network-agent-ethernet-01' ORDER BY m.event_time DESC LIMIT 50;"
 
 docker compose exec -T postgres psql -U netpulse_admin -d netpulse `
-  -P pager=off -c "SELECT measurement_type,count(*) AS rows,min(event_time) AS first_event,max(event_time) AS latest_event FROM network_measurements WHERE agent_id='network-agent-wifi-01' GROUP BY measurement_type ORDER BY measurement_type;"
+  -P pager=off -c "SELECT measurement_type,count(*) AS rows,min(event_time) AS first_event,max(event_time) AS latest_event FROM network_measurements WHERE agent_id='network-agent-ethernet-01' GROUP BY measurement_type ORDER BY measurement_type;"
 
 docker compose exec -T postgres psql -U netpulse_admin -d netpulse `
-  -P pager=off -c "SELECT failure_id,first_failed_at,source_topic,source_partition,source_offset,source_key,error_class,error_message,dead_letter_published_at FROM processing_failures WHERE source_key='network-agent-wifi-01' ORDER BY first_failed_at DESC;"
+  -P pager=off -c "SELECT failure_id,first_failed_at,source_topic,source_partition,source_offset,source_key,error_class,error_message,dead_letter_published_at FROM processing_failures WHERE source_key='network-agent-ethernet-01' ORDER BY first_failed_at DESC;"
 ```
 
 The final query must return zero rows. Capture the total failure count before

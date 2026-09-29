@@ -210,6 +210,9 @@ switch ($Command) {
     "monitoring-up" {
         Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
         Invoke-DockerCompose @("run", "--rm", "migrate")
+        Invoke-DockerCompose @("--profile", "monitoring", "rm", "-f", "monitoring-init")
+        Invoke-DockerCompose @("--profile", "monitoring", "run", "--rm", "monitoring-init")
+        Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
         Invoke-DockerCompose @("--profile", "monitoring", "up", "-d", "--wait")
     }
     "monitoring-verify" {

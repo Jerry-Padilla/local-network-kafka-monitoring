@@ -154,6 +154,9 @@ case "$command" in
   monitoring-up)
     "${compose[@]}" up -d --wait postgres
     "${compose[@]}" run --rm migrate
+    "${compose[@]}" --profile monitoring rm -f monitoring-init
+    "${compose[@]}" --profile monitoring run --rm monitoring-init
+    "${compose[@]}" up -d --build --wait event-ingestor
     "${compose[@]}" --profile monitoring up -d --wait
     ;;
   monitoring-verify)

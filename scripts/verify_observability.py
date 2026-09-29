@@ -66,12 +66,26 @@ def verify(
     uids = {item["uid"] for item in datasources}
     if not {"prometheus", "postgres"} <= uids:
         raise RuntimeError("Grafana is missing a required provisioned datasource")
+    dashboards = get_json("http://127.0.0.1:3000/api/search?tag=netpulse", auth=grafana_auth)
+    if len({item.get("uid") for item in dashboards}) < 3:
+        raise RuntimeError("Grafana is missing one or more NetPulse dashboards")
+    rule_groups = get_json("http://127.0.0.1:9090/api/v1/rules")["data"]["groups"]
+    if not rule_groups or any(
+        rule.get("health") != "ok" for group in rule_groups for rule in group.get("rules", [])
+    ):
+        raise RuntimeError("Prometheus rules are absent or unhealthy")
     alert_status = get_json("http://127.0.0.1:9093/api/v2/status")
-    ready = alert_status.get("cluster", {}).get("status", "ready")
-    sql = query_sql("SELECT count(*) FROM v_sre_pipeline_status")
+    ready = alert_status.get("cluster", {}).get("status")
+    if ready not in {"ready", "disabled"}:
+        raise RuntimeError("Alertmanager is not ready")
+    sql = query_sql("SELECT count(*) FROM v_sre_agent_status")
+    if sql < 1:
+        raise RuntimeError("SRE reporting views contain no registered agents")
     return {
         "targets": len(targets),
         "datasources": len(datasources),
+        "dashboards": len(dashboards),
+        "rule_groups": len(rule_groups),
         "alerts_api": ready,
         "sql": sql,
     }

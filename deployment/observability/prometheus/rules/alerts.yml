@@ -28,6 +28,15 @@ groups:
           impact: "Measurements are reaching storage later than expected."
           likely_cause: "Ingestion is stopped, unhealthy, or slower than incoming traffic."
           runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/kafka-lag.md"
+      - alert: NetPulseKafkaUnavailable
+        expr: up{job="kafka-exporter"} == 0 or kafka_brokers < 1
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Kafka is unavailable to the monitoring plane"
+          impact: "Agents and services cannot deliver or consume new observations."
+          likely_cause: "The broker stopped, failed health checks, or is unreachable by the exporter."
+          runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/kafka-lag.md"
       - alert: NetPulsePipelineStale
         expr: sum(rate(netpulse_ingestion_records_total[5m])) > 0 and netpulse:ingestion_freshness_seconds > 60
         for: 2m
@@ -72,7 +81,7 @@ groups:
           likely_cause: "Kafka publication is unavailable or acknowledgements are failing."
           runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/incident-outbox-backlog.md"
       - alert: NetPulsePiStale
-        expr: count(up{job="pi-agent"}) > 0 and (up{job="pi-agent"} == 0 or time() - netpulse_agent_last_collection_success_timestamp_seconds{job="pi-agent"} > 120)
+        expr: count(up{job="pi-agent"}) > 0 and on() (up{job="pi-agent"} == 0 or time() - netpulse_agent_last_collection_success_timestamp_seconds{job="pi-agent"} > 120)
         for: 2m
         labels: {severity: critical}
         annotations:

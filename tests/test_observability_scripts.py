@@ -63,6 +63,10 @@ def test_observability_verifier_checks_targets_datasources_alerts_and_sql() -> N
             return {"status": "success", "data": {"activeTargets": [{"health": "up"}]}}
         if url.endswith("/api/datasources"):
             return [{"uid": "prometheus"}, {"uid": "postgres"}]
+        if "/api/search?" in url:
+            return [{"uid": "one"}, {"uid": "two"}, {"uid": "three"}]
+        if url.endswith("/api/v1/rules"):
+            return {"data": {"groups": [{"rules": [{"health": "ok"}]}]}}
         if url.endswith("/api/v2/status"):
             return {"cluster": {"status": "ready"}}
         raise AssertionError(url)
@@ -74,9 +78,16 @@ def test_observability_verifier_checks_targets_datasources_alerts_and_sql() -> N
         grafana_auth=("admin", "secret"),
     )
 
-    assert result == {"targets": 1, "datasources": 2, "alerts_api": "ready", "sql": 1}
+    assert result == {
+        "targets": 1,
+        "datasources": 2,
+        "dashboards": 3,
+        "rule_groups": 1,
+        "alerts_api": "ready",
+        "sql": 1,
+    }
     assert any(url.endswith("/api/v1/targets") for url in calls)
-    assert sql == ["SELECT count(*) FROM v_sre_pipeline_status"]
+    assert sql == ["SELECT count(*) FROM v_sre_agent_status"]
 
 
 def test_failure_drill_always_restores_stopped_dependency() -> None:
@@ -89,10 +100,11 @@ def test_failure_drill_always_restores_stopped_dependency() -> None:
             raise RuntimeError("verification failed")
 
     with pytest.raises(RuntimeError):
-        drills.dependency_outage("kafka", run=run, observe=lambda: run("observe"), settle_seconds=0)
+        drills.dependency_outage("kafka", run=run, observe=lambda: run("observe"), fire_timeout=0)
 
-    assert commands[0] == ("docker", "compose", "stop", "kafka")
-    assert commands[-1] == ("docker", "compose", "start", "kafka")
+    assert commands[0][-2:] == ("stop", "kafka")
+    assert commands[-1][-2:] == ("start", "kafka")
+    assert "-f" in commands[0]
 
 
 def test_operator_entrypoints_expose_equivalent_monitoring_commands() -> None:
