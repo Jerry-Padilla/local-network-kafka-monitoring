@@ -16,9 +16,10 @@ class FakeRepository:
         self.events = []
         self.failures = []
 
-    def persist_event(self, event, source) -> None:
+    def persist_event(self, event, source) -> bool:
         self.calls.append("persist")
         self.events.append((event, source))
+        return True
 
     def record_failure(self, source, error_class, error_message, validation_errors) -> None:
         self.calls.append("record_failure")
@@ -113,3 +114,18 @@ def test_database_failure_prevents_output_publication() -> None:
         processor.process(source(record.value))
 
     assert calls == ["persist_failed"]
+
+
+def test_duplicate_measurement_is_still_published_downstream() -> None:
+    calls: list[str] = []
+    repository = FakeRepository(calls)
+    publisher = FakePublisher(calls)
+    repository.persist_event = lambda _event, _source: False
+    processor = EventProcessor(repository, publisher)
+    record = ScenarioGenerator(seed=3).generate_round("healthy", FIXED_TIME)[0]
+
+    result = processor.process(source(record.value))
+
+    assert result.outcome == ProcessingOutcome.DUPLICATE
+    assert calls == [f"publish:{VALID_MEASUREMENTS_TOPIC}"]
+    assert len(publisher.records) == 1

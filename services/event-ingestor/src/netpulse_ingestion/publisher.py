@@ -7,6 +7,8 @@ from threading import Event as ThreadEvent
 
 from confluent_kafka import KafkaError, Message, Producer
 
+from netpulse_ingestion.metrics import IngestionMetrics
+
 
 class KafkaPublicationError(RuntimeError):
     """Kafka did not acknowledge a required output record."""
@@ -20,8 +22,10 @@ class SynchronousKafkaPublisher:
         bootstrap_servers: str,
         client_id: str,
         delivery_timeout_seconds: float,
+        metrics: IngestionMetrics,
     ) -> None:
         self._delivery_timeout_seconds = delivery_timeout_seconds
+        self._metrics = metrics
         self._producer = Producer(
             {
                 "bootstrap.servers": bootstrap_servers,
@@ -37,6 +41,14 @@ class SynchronousKafkaPublisher:
         )
 
     def publish(self, topic: str, key: str | None, value: bytes) -> None:
+        try:
+            self._publish(topic, key, value)
+        except Exception:
+            self._metrics.record_publication("failed")
+            raise
+        self._metrics.record_publication("acknowledged")
+
+    def _publish(self, topic: str, key: str | None, value: bytes) -> None:
         delivered = ThreadEvent()
         delivery_error: list[KafkaError] = []
 

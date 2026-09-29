@@ -11,6 +11,7 @@ from confluent_kafka import Consumer, KafkaError, KafkaException, Message, Topic
 from netpulse_contracts.topics import RAW_INPUT_TOPICS
 
 from netpulse_ingestion.config import IngestionConfig
+from netpulse_ingestion.metrics import IngestionMetrics
 from netpulse_ingestion.processor import EventProcessor
 from netpulse_ingestion.processor_types import SourceRecord
 
@@ -20,9 +21,15 @@ LOGGER = structlog.get_logger()
 class IngestionConsumer:
     """Poll raw topics and commit each record only after complete processing."""
 
-    def __init__(self, config: IngestionConfig, processor: EventProcessor) -> None:
+    def __init__(
+        self,
+        config: IngestionConfig,
+        processor: EventProcessor,
+        metrics: IngestionMetrics,
+    ) -> None:
         self._config = config
         self._processor = processor
+        self._metrics = metrics
         self._running = True
         self._consumer = Consumer(
             {
@@ -64,11 +71,17 @@ class IngestionConsumer:
                     raise KafkaException(message.error())
 
                 coordinate = (message.topic(), message.partition(), message.offset())
+                started_at = time.perf_counter()
                 try:
                     source = self._to_source(message)
                     result = self._processor.process(source)
                     self._consumer.store_offsets(message=message)
                     self._consumer.commit(message=message, asynchronous=False)
+                    self._metrics.record_processing(
+                        result.outcome.value,
+                        duration_seconds=time.perf_counter() - started_at,
+                    )
+                    self._metrics.mark_success(time.time())
                     attempts.pop(coordinate, None)
                     LOGGER.info(
                         "record_processed",
@@ -79,6 +92,10 @@ class IngestionConsumer:
                         event_id=result.event_id,
                     )
                 except Exception as error:
+                    self._metrics.record_processing(
+                        "failed",
+                        duration_seconds=time.perf_counter() - started_at,
+                    )
                     attempt = attempts.get(coordinate, 0) + 1
                     attempts[coordinate] = attempt
                     LOGGER.exception(
@@ -93,6 +110,7 @@ class IngestionConsumer:
                             f"processing failed {attempt} times at {coordinate}; "
                             "stopping without committing the offset"
                         ) from error
+                    self._metrics.record_retry()
                     self._consumer.seek(
                         TopicPartition(message.topic(), message.partition(), message.offset())
                     )

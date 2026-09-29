@@ -52,10 +52,10 @@ class PostgresEventRepository:
             }
         return agents, endpoints
 
-    def persist_event(self, event: Event, source: SourceRecord) -> None:
+    def persist_event(self, event: Event, source: SourceRecord) -> bool:
         payload = event.model_dump(mode="json")
         with self._pool.connection() as connection, connection.transaction():
-            connection.execute(
+            result = connection.execute(
                 """
                 INSERT INTO raw_events (
                     event_id, event_type, schema_version, agent_id, agent_role,
@@ -89,7 +89,10 @@ class PostgresEventRepository:
                     "payload": Jsonb(payload),
                 },
             )
-            self._persist_typed(connection, event)
+            inserted = result.rowcount == 1
+            if inserted:
+                self._persist_typed(connection, event)
+        return inserted
 
     def _persist_typed(self, connection: Any, event: Event) -> None:
         if isinstance(event, NetworkMeasurement):

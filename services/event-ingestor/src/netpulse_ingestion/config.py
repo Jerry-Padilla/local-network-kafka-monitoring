@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from netpulse_observability import MetricsHttpConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,6 +17,13 @@ class IngestionConfig:
     max_processing_attempts: int
     retry_base_seconds: float
     delivery_timeout_seconds: float
+    metrics: MetricsHttpConfig = field(
+        default_factory=lambda: MetricsHttpConfig(
+            enabled=False,
+            host="127.0.0.1",
+            port=9101,
+        )
+    )
 
     @classmethod
     def from_env(cls) -> IngestionConfig:
@@ -29,6 +38,7 @@ class IngestionConfig:
             max_processing_attempts=int(os.getenv("NETPULSE_MAX_PROCESSING_ATTEMPTS", "5")),
             retry_base_seconds=float(os.getenv("NETPULSE_RETRY_BASE_SECONDS", "0.5")),
             delivery_timeout_seconds=float(os.getenv("NETPULSE_DELIVERY_TIMEOUT_SECONDS", "10")),
+            metrics=MetricsHttpConfig.from_env(default_port=9101),
         )
         if config.max_processing_attempts < 1:
             raise ValueError("NETPULSE_MAX_PROCESSING_ATTEMPTS must be at least 1")

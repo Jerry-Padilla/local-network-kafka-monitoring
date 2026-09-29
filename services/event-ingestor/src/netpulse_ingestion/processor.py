@@ -30,7 +30,7 @@ KNOWN_ENDPOINTS = {
 
 
 class EventRepository(Protocol):
-    def persist_event(self, event: Event, source: SourceRecord) -> None: ...
+    def persist_event(self, event: Event, source: SourceRecord) -> bool: ...
 
     def record_failure(
         self,
@@ -49,6 +49,7 @@ class OutputPublisher(Protocol):
 
 class ProcessingOutcome(StrEnum):
     VALID = "valid"
+    DUPLICATE = "duplicate"
     DEAD_LETTERED = "dead_lettered"
 
 
@@ -81,7 +82,7 @@ class EventProcessor:
             self._dead_letter(source, error)
             return ProcessingResult(ProcessingOutcome.DEAD_LETTERED, None)
 
-        self._repository.persist_event(event, source)
+        inserted = self._repository.persist_event(event, source)
         if isinstance(event, NetworkMeasurement):
             value = json.dumps(
                 event.model_dump(mode="json"), separators=(",", ":"), sort_keys=True
@@ -91,7 +92,8 @@ class EventProcessor:
                 event.agent_id,
                 value,
             )
-        return ProcessingResult(ProcessingOutcome.VALID, str(event.event_id))
+        outcome = ProcessingOutcome.VALID if inserted else ProcessingOutcome.DUPLICATE
+        return ProcessingResult(outcome, str(event.event_id))
 
     def _validate_references(self, event: Event) -> None:
         if event.agent_id not in self._known_agents:

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import pytest
+from netpulse_ingestion.metrics import IngestionMetrics
 from netpulse_ingestion.publisher import (
     KafkaPublicationError,
     SynchronousKafkaPublisher,
 )
+from prometheus_client import CollectorRegistry, generate_latest
 
 
 class FakeProducer:
@@ -25,9 +27,16 @@ class FakeProducer:
         return 0
 
 
-def publisher(monkeypatch) -> SynchronousKafkaPublisher:
+def publisher(
+    monkeypatch, metrics: IngestionMetrics | None = None
+) -> SynchronousKafkaPublisher:
     monkeypatch.setattr("netpulse_ingestion.publisher.Producer", FakeProducer)
-    return SynchronousKafkaPublisher("broker:9092", "test", 0.1)
+    return SynchronousKafkaPublisher(
+        "broker:9092",
+        "test",
+        0.1,
+        metrics or IngestionMetrics(CollectorRegistry()),
+    )
 
 
 def test_required_output_waits_for_successful_ack(monkeypatch) -> None:
@@ -39,6 +48,18 @@ def test_required_output_waits_for_successful_ack(monkeypatch) -> None:
     instance.close()
 
 
+def test_publication_acknowledgement_is_recorded(monkeypatch) -> None:
+    FakeProducer.callback_error = None
+    FakeProducer.invoke_callback = True
+    registry = CollectorRegistry()
+    instance = publisher(monkeypatch, IngestionMetrics(registry))
+
+    instance.publish("output", "agent", b"{}")
+
+    output = generate_latest(registry).decode()
+    assert 'netpulse_ingestion_publications_total{outcome="acknowledged"} 1.0' in output
+
+
 def test_delivery_error_is_propagated(monkeypatch) -> None:
     FakeProducer.callback_error = "broker rejected record"
     FakeProducer.invoke_callback = True
@@ -46,6 +67,19 @@ def test_delivery_error_is_propagated(monkeypatch) -> None:
 
     with pytest.raises(KafkaPublicationError, match="broker rejected"):
         instance.publish("output", "agent", b"{}")
+
+
+def test_publication_failure_is_recorded_once(monkeypatch) -> None:
+    FakeProducer.callback_error = "broker rejected record"
+    FakeProducer.invoke_callback = True
+    registry = CollectorRegistry()
+    instance = publisher(monkeypatch, IngestionMetrics(registry))
+
+    with pytest.raises(KafkaPublicationError):
+        instance.publish("output", "agent", b"{}")
+
+    output = generate_latest(registry).decode()
+    assert 'netpulse_ingestion_publications_total{outcome="failed"} 1.0' in output
 
 
 def test_delivery_timeout_is_not_silently_ignored(monkeypatch) -> None:

@@ -10,6 +10,8 @@ from netpulse_simulator.scenarios import ScenarioGenerator
 
 
 class FakeResult:
+    rowcount = 1
+
     def fetchone(self):
         return (1,)
 
@@ -54,6 +56,22 @@ class FakePool:
         return self.connection_instance
 
 
+class DuplicateResult(FakeResult):
+    rowcount = 0
+
+
+class DuplicateConnection(FakeConnection):
+    def execute(self, sql: str, params=None) -> FakeResult:
+        self.executions.append((" ".join(sql.split()), params))
+        return DuplicateResult()
+
+
+class DuplicatePool(FakePool):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.connection_instance = DuplicateConnection()
+
+
 def source(offset: int = 1) -> SourceRecord:
     return SourceRecord(
         topic="network.measurements.raw.v1",
@@ -72,7 +90,7 @@ def test_repository_persists_every_phase1_typed_event(monkeypatch) -> None:
     records = generator.generate_round("healthy", datetime(2026, 7, 25, tzinfo=UTC))
 
     for offset, record in enumerate(records):
-        repository.persist_event(validate_event(record.value), source(offset))
+        assert repository.persist_event(validate_event(record.value), source(offset)) is True
 
     speed_test = SpeedTest(
         event_id="c2128d60-f193-4421-8317-72b64e7038cd",
@@ -132,3 +150,20 @@ def test_reference_allowlists_are_loaded_from_database(monkeypatch) -> None:
 
     assert agents == {"reference-id"}
     assert endpoints == {"reference-id"}
+
+
+def test_duplicate_raw_event_reports_false_and_skips_redundant_typed_write(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr("netpulse_ingestion.repository.ConnectionPool", DuplicatePool)
+    repository = PostgresEventRepository("postgresql://example")
+    record = ScenarioGenerator(seed=9).generate_round(
+        "healthy", datetime(2026, 7, 25, tzinfo=UTC)
+    )[0]
+
+    inserted = repository.persist_event(validate_event(record.value), source())
+
+    assert inserted is False
+    statements = [sql for sql, _params in DuplicatePool.latest.connection_instance.executions]
+    assert len(statements) == 1
+    assert "INSERT INTO raw_events" in statements[0]
