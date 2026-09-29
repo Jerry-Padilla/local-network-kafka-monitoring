@@ -10,11 +10,18 @@ if [[ -z "${POSTGRES_EXPORTER_PASSWORD:-}" ]]; then
   exit 1
 fi
 
-psql --set ON_ERROR_STOP=1 \
-  --username "$POSTGRES_USER" \
-  --dbname "$POSTGRES_DB" \
-  --set grafana_password="$GRAFANA_POSTGRES_PASSWORD" \
-  --set exporter_password="$POSTGRES_EXPORTER_PASSWORD" <<'SQL'
+psql_args=(
+  --set ON_ERROR_STOP=1
+  --username "$POSTGRES_USER"
+  --dbname "$POSTGRES_DB"
+  --set grafana_password="$GRAFANA_POSTGRES_PASSWORD"
+  --set exporter_password="$POSTGRES_EXPORTER_PASSWORD"
+)
+if [[ -n "${PGHOST:-}" ]]; then
+  psql_args+=(--host "$PGHOST")
+fi
+
+psql "${psql_args[@]}" <<'SQL'
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'netpulse_report') THEN
     CREATE ROLE netpulse_report NOLOGIN;

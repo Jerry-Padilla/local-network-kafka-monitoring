@@ -108,6 +108,9 @@ services:
       NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
       NETPULSE_CONSUMER_GROUP: ${NETPULSE_CONSUMER_GROUP:-netpulse-ingestion-v1}
       NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+      NETPULSE_METRICS_ENABLED: "true"
+      NETPULSE_METRICS_HOST: 0.0.0.0
+      NETPULSE_METRICS_PORT: "9101"
     restart: unless-stopped
     networks: [backend]
 
@@ -168,6 +171,9 @@ services:
       NETPULSE_STREAM_TRIGGER_INTERVAL: ${NETPULSE_STREAM_TRIGGER_INTERVAL:-10 seconds}
       NETPULSE_STREAM_SHUFFLE_PARTITIONS: ${NETPULSE_STREAM_SHUFFLE_PARTITIONS:-6}
       NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+      NETPULSE_METRICS_ENABLED: "true"
+      NETPULSE_METRICS_HOST: 0.0.0.0
+      NETPULSE_METRICS_PORT: "9103"
     volumes:
       - spark-checkpoints:/var/lib/netpulse-streaming/checkpoints
       - spark-ivy-cache:/var/lib/netpulse-streaming/.ivy2
@@ -197,6 +203,9 @@ services:
       NETPULSE_CLASSIFIER_OPEN_OBSERVATIONS: ${NETPULSE_CLASSIFIER_OPEN_OBSERVATIONS:-2}
       NETPULSE_CLASSIFIER_RESOLVE_OBSERVATIONS: ${NETPULSE_CLASSIFIER_RESOLVE_OBSERVATIONS:-2}
       NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+      NETPULSE_METRICS_ENABLED: "true"
+      NETPULSE_METRICS_HOST: 0.0.0.0
+      NETPULSE_METRICS_PORT: "9104"
     restart: unless-stopped
     networks: [backend]
 
@@ -212,6 +221,133 @@ services:
       NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
       NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
     restart: "no"
+    networks: [backend]
+
+  monitoring-init:
+    profiles: [monitoring]
+    image: postgres:17.10-bookworm
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-netpulse}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-netpulse_admin}
+      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}
+      GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD:-change-me-local-grafana}
+      POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:-change-me-local-exporter}
+    volumes:
+      - ./database/init/01-create-monitoring-users.sh:/scripts/provision-monitoring-users.sh:ro
+    entrypoint: ["bash", "/scripts/provision-monitoring-users.sh"]
+    restart: "no"
+    networks: [backend]
+
+  postgres-exporter:
+    profiles: [monitoring]
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    depends_on:
+      monitoring-init:
+        condition: service_completed_successfully
+    environment:
+      DATA_SOURCE_URI: postgres:5432/${POSTGRES_DB:-netpulse}?sslmode=disable
+      DATA_SOURCE_USER: netpulse_postgres_exporter
+      DATA_SOURCE_PASS: ${POSTGRES_EXPORTER_PASSWORD:-change-me-local-exporter}
+    restart: unless-stopped
+    networks: [backend]
+
+  kafka-exporter:
+    profiles: [monitoring]
+    image: danielqsj/kafka-exporter:v1.10.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: ["--kafka.server=kafka:9092"]
+    restart: unless-stopped
+    networks: [backend]
+
+  alertmanager:
+    profiles: [monitoring]
+    image: prom/alertmanager:v0.34.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./deployment/observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/bin/amtool",
+          "--alertmanager.url=http://localhost:9093",
+          "alert",
+          "query"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [backend]
+
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v3.14.0
+    depends_on:
+      alertmanager:
+        condition: service_healthy
+      kafka-exporter:
+        condition: service_started
+      postgres-exporter:
+        condition: service_started
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./deployment/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deployment/observability/prometheus/pi-targets.json:/etc/prometheus/pi-targets.json:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "/bin/promtool", "check", "ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [backend]
+
+  grafana:
+    profiles: [monitoring]
+    image: grafana/grafana:13.2.2
+    depends_on:
+      monitoring-init:
+        condition: service_completed_successfully
+      prometheus:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-local-grafana-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD:-change-me-local-grafana}
+      POSTGRES_DB: ${POSTGRES_DB:-netpulse}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./deployment/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+    restart: unless-stopped
     networks: [backend]
 
   tests:
@@ -235,7 +371,10 @@ networks:
 
 volumes:
   agent-outbox:
+  alertmanager-data:
+  grafana-data:
   kafka-data:
   postgres-data:
+  prometheus-data:
   spark-checkpoints:
   spark-ivy-cache:

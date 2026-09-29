@@ -1,0 +1,49 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [alertmanager:9093]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: [prometheus:9090]
+        labels:
+          required: "true"
+  - job_name: event-ingestor
+    static_configs:
+      - targets: [event-ingestor:9101]
+        labels:
+          required: "true"
+  - job_name: network-agent
+    static_configs:
+      - targets: [network-agent:9102]
+        labels:
+          required: "false"
+  - job_name: stream-processor
+    static_configs:
+      - targets: [stream-processor:9103]
+        labels:
+          required: "false"
+  - job_name: incident-classifier
+    static_configs:
+      - targets: [incident-classifier:9104]
+        labels:
+          required: "false"
+  - job_name: postgres-exporter
+    static_configs:
+      - targets: [postgres-exporter:9187]
+        labels:
+          required: "true"
+  - job_name: kafka-exporter
+    static_configs:
+      - targets: [kafka-exporter:9308]
+        labels:
+          required: "true"
+  - job_name: pi-agent
+    file_sd_configs:
+      - files: [/etc/prometheus/pi-targets.json]
+        refresh_interval: 30s
