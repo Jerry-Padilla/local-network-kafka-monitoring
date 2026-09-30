@@ -70,7 +70,7 @@ class PostgresEventRepository:
                     %(source_topic)s, %(source_partition)s, %(source_offset)s,
                     %(payload)s, 'valid'
                 )
-                ON CONFLICT (event_id) DO NOTHING
+                ON CONFLICT DO NOTHING
                 """,
                 {
                     "event_id": event.event_id,

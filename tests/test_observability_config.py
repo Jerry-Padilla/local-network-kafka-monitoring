@@ -156,6 +156,7 @@ def test_alerts_are_actionable_and_empty_pi_discovery_is_safe() -> None:
         assert {"summary", "impact", "likely_cause", "runbook_url"} <= alert["annotations"].keys()
         assert alert["annotations"]["runbook_url"].startswith("https://github.com/")
     assert 'required="true"' in alerts["NetPulseTargetDown"]["expr"]
+    assert "and on()" in alerts["NetPulsePipelineStale"]["expr"]
     assert 'count(up{job="pi-agent"}) > 0' in alerts["NetPulsePiStale"]["expr"]
     assert "and on()" in alerts["NetPulsePiStale"]["expr"]
     assert (

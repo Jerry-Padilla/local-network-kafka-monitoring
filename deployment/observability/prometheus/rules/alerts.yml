@@ -38,7 +38,7 @@ groups:
           likely_cause: "The broker stopped, failed health checks, or is unreachable by the exporter."
           runbook_url: "https://github.com/Jerry-Padilla/local-network-kafka-monitoring/blob/main/docs/runbooks/kafka-lag.md"
       - alert: NetPulsePipelineStale
-        expr: sum(rate(netpulse_ingestion_records_total[5m])) > 0 and netpulse:ingestion_freshness_seconds > 60
+        expr: sum(rate(netpulse_ingestion_records_total[5m])) > 0 and on() netpulse:ingestion_freshness_seconds > 60
         for: 2m
         labels: {severity: critical}
         annotations:

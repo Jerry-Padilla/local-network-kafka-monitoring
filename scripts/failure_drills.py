@@ -40,12 +40,17 @@ def _wait_for_alert(
     deadline = time.monotonic() + timeout_seconds
     while True:
         alerts = observe()
-        active = any(
-            item.get("labels", {}).get("alertname") == name
-            and item.get("state") in {"pending", "firing"}
+        matching_states = {
+            item.get("state")
             for item in alerts
+            if item.get("labels", {}).get("alertname") == name
+        }
+        reached_state = (
+            "firing" in matching_states
+            if firing
+            else matching_states.isdisjoint({"pending", "firing"})
         )
-        if active is firing:
+        if reached_state:
             return alerts
         if time.monotonic() >= deadline:
             raise TimeoutError(
@@ -78,6 +83,7 @@ def dependency_outage(
     resolved = _wait_for_alert(
         expected, firing=False, observe=observe, timeout_seconds=recovery_timeout
     )
+    run(*COMPOSE, "up", "-d", "--wait", "event-ingestor")
     return {
         "drill": f"{service}-outage",
         "started_at": started,
@@ -102,10 +108,10 @@ def malformed_traffic(
         "--scenario",
         "malformed-events",
         "--duration",
-        "2",
+        "1",
     )
     fired = _wait_for_alert(
-        "NetPulseDeadLetterGrowth", firing=True, observe=observe, timeout_seconds=60
+        "NetPulseDeadLetterGrowth", firing=True, observe=observe, timeout_seconds=240
     )
     return {
         "drill": "malformed-traffic",

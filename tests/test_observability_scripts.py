@@ -107,6 +107,51 @@ def test_failure_drill_always_restores_stopped_dependency() -> None:
     assert "-f" in commands[0]
 
 
+def test_failure_drills_wait_for_ingestor_recovery_and_allow_dead_letter_processing() -> None:
+    drills = _load("failure_drills")
+    commands: list[tuple[str, ...]] = []
+    waits: list[tuple[str, bool, float]] = []
+
+    drills._wait_for_alert = lambda name, *, firing, observe, timeout_seconds: waits.append(
+        (name, firing, timeout_seconds)
+    ) or []
+
+    drills.dependency_outage(
+        "postgres",
+        run=lambda *args: commands.append(args),
+        observe=lambda: [],
+    )
+    drills.malformed_traffic(
+        run=lambda *args: commands.append(args),
+        observe=lambda: [],
+    )
+
+    assert any(command[-4:] == ("up", "-d", "--wait", "event-ingestor") for command in commands)
+    simulator = next(command for command in commands if "malformed-events" in command)
+    assert simulator[-2:] == ("--duration", "1")
+    assert ("NetPulseDeadLetterGrowth", True, 240) in waits
+
+
+def test_wait_for_alert_requires_firing_not_pending(monkeypatch) -> None:
+    drills = _load("failure_drills")
+    observations = iter(
+        [
+            [{"labels": {"alertname": "Expected"}, "state": "pending"}],
+            [{"labels": {"alertname": "Expected"}, "state": "firing"}],
+        ]
+    )
+    monkeypatch.setattr(drills.time, "sleep", lambda _seconds: None)
+
+    result = drills._wait_for_alert(
+        "Expected",
+        firing=True,
+        observe=lambda: next(observations),
+        timeout_seconds=1,
+    )
+
+    assert result[0]["state"] == "firing"
+
+
 def test_operator_entrypoints_expose_equivalent_monitoring_commands() -> None:
     expected = {
         "monitoring-render",
