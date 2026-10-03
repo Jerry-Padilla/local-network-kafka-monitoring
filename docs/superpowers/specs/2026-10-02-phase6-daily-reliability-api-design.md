@@ -224,10 +224,12 @@ Database integration tests apply current migrations, provision the API login,
 query a seeded page through HTTP, follow its cursor without duplicate keys, and
 verify filtering and JSON types. Privilege tests prove the login can select
 `v_daily_probe_reliability` while base telemetry reads and all writes fail.
-`EXPLAIN` acceptance confirms the paginated query uses the
-`fact_reliability_daily` primary-key index for the unfiltered and date-bounded
-paths; if PostgreSQL cannot do so through the view, a migration adds only the
-specific supporting index demonstrated necessary by the captured plan.
+The existing primary key is ascending on every grain column, so it cannot
+fully satisfy the API's mixed descending-date/ascending-identifier order.
+A reversible migration adds one purpose-built index on
+`(date_utc DESC, agent_id, endpoint_id, source_kind, probe_type)`. `EXPLAIN`
+acceptance confirms the unfiltered and date-bounded paginated paths can use
+that index without an explicit sort.
 
 The final verification runs the full feasible Python unit suite, coverage,
 Ruff formatting and linting, strict mypy, Compose configuration for all
