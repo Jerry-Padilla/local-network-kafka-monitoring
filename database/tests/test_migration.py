@@ -91,6 +91,55 @@ def test_phase5b_migration_has_sre_views_roles_and_container_probe() -> None:
     assert "'container-observer-01', 'container_probe'" in migration
 
 
+def test_phase6b_migration_exposes_only_safe_live_measurement_fields() -> None:
+    migration = (
+        Path(__file__).parents[1] / "migrations" / "versions" / "0007_phase6b_live_dashboard.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'down_revision = "0006"' in migration
+    assert "CREATE VIEW v_grafana_live_measurements AS" in migration
+    normalized_migration = " ".join(migration.split())
+    expected_projection = (
+        "CREATE VIEW v_grafana_live_measurements AS "
+        "SELECT event_time, agent_id, target_id, measurement_type, success, "
+        "latency_ms, packet_loss_pct, jitter_ms "
+        "FROM network_measurements;"
+    )
+    assert expected_projection in normalized_migration
+    assert "SELECT *" not in migration.upper()
+    assert "GRANT SELECT ON v_grafana_live_measurements TO netpulse_report" in migration
+    assert "REVOKE SELECT ON v_grafana_live_measurements FROM netpulse_report" in migration
+    assert "DROP VIEW IF EXISTS v_grafana_live_measurements" in migration
+
+
+def test_phase6b_migration_indexes_live_measurement_time_and_reverses_it() -> None:
+    migration = (
+        Path(__file__).parents[1] / "migrations" / "versions" / "0007_phase6b_live_dashboard.py"
+    ).read_text(encoding="utf-8")
+
+    assert (
+        "CREATE INDEX idx_network_measurements_event_time "
+        "ON network_measurements (event_time)" in " ".join(migration.split())
+    )
+    assert "DROP INDEX IF EXISTS idx_network_measurements_event_time" in migration
+
+
+def test_phase6_query_api_migration_adds_reversible_mixed_direction_order_index() -> None:
+    migration = (
+        Path(__file__).parents[1] / "migrations" / "versions" / "0008_phase6_query_api_index.py"
+    ).read_text(encoding="utf-8")
+
+    normalized_migration = " ".join(migration.split())
+    assert 'down_revision = "0007"' in migration
+    assert (
+        "CREATE INDEX idx_fact_reliability_daily_api_order "
+        "ON fact_reliability_daily "
+        "(date_utc DESC, agent_id ASC, endpoint_id ASC, source_kind ASC, probe_type ASC)"
+        in normalized_migration
+    )
+    assert "DROP INDEX IF EXISTS idx_fact_reliability_daily_api_order" in migration
+
+
 def test_monitoring_user_scripts_require_passwords_and_quote_psql_values() -> None:
     root = Path(__file__).parents[2]
     init_script = (root / "database" / "init" / "01-create-monitoring-users.sh").read_text(
