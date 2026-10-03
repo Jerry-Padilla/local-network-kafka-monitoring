@@ -27,7 +27,32 @@ def _token(payload: object) -> str:
 def _assert_invalid(token: str, filters: DailyReliabilityFilters) -> None:
     with pytest.raises(CursorError) as exc_info:
         decode_cursor(token, filters)
+    assert str(exc_info.value) == "invalid cursor"
     assert token not in str(exc_info.value)
+
+
+def _standard_alphabet_token(filters: DailyReliabilityFilters) -> str:
+    token = encode_cursor(_key(), filters)
+    payload = json.loads(base64.urlsafe_b64decode(token + "=" * (-len(token) % 4)))
+    for codepoint in range(0x80, 0x800):
+        payload["k"][1] = chr(codepoint)
+        serialized = json.dumps(
+            payload, separators=(",", ":"), sort_keys=True, ensure_ascii=False
+        ).encode("utf-8")
+        standard_token = base64.b64encode(serialized).decode().rstrip("=")
+        if "+" in standard_token or "/" in standard_token:
+            return standard_token
+    raise AssertionError("could not generate a token containing URL-safe Base64 characters")
+
+
+def _duplicate_key_token(key: str, filters: DailyReliabilityFilters) -> str:
+    token = encode_cursor(_key(), filters)
+    encoded = token + "=" * (-len(token) % 4)
+    payload = json.loads(base64.urlsafe_b64decode(encoded))
+    serialized = json.dumps(payload, separators=(",", ":"), sort_keys=True)
+    duplicate = json.dumps(payload[key], separators=(",", ":"), sort_keys=True)
+    serialized = serialized[:-1] + f',"{key}":{duplicate}' + "}"
+    return base64.urlsafe_b64encode(serialized.encode()).decode().rstrip("=")
 
 
 def test_cursor_round_trip_uses_complete_ordering_key() -> None:
@@ -97,6 +122,28 @@ def test_cursor_rejects_oversize_malformed_and_wrong_shape_payloads() -> None:
 
     for token in invalid_tokens:
         _assert_invalid(token, filters)
+
+
+def test_cursor_rejects_padded_base64() -> None:
+    filters = DailyReliabilityFilters()
+    token = encode_cursor(_key(), filters)
+    padding = "=" * (-len(token) % 4)
+    assert padding
+
+    _assert_invalid(token + padding, filters)
+
+
+def test_cursor_rejects_standard_base64_alphabet() -> None:
+    filters = DailyReliabilityFilters()
+
+    _assert_invalid(_standard_alphabet_token(filters), filters)
+
+
+@pytest.mark.parametrize("key", ["v", "k", "f"])
+def test_cursor_rejects_duplicate_top_level_keys(key: str) -> None:
+    filters = DailyReliabilityFilters()
+
+    _assert_invalid(_duplicate_key_token(key, filters), filters)
 
 
 def test_same_date_rows_produce_distinct_cursors() -> None:

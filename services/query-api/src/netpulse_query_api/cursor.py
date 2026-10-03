@@ -16,6 +16,7 @@ from netpulse_query_api.models import CursorKey, DailyReliabilityFilters
 _MAX_CURSOR_LENGTH = 2048
 _KEY_FIELDS = ("date_utc", "agent_id", "endpoint_id", "source_kind", "probe_type")
 _FINGERPRINT_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
+_URLSAFE_TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_-]*\Z")
 
 
 class CursorError(ValueError):
@@ -28,6 +29,15 @@ def _canonical_json(value: Any) -> bytes:
 
 def _filter_fingerprint(filters: DailyReliabilityFilters) -> str:
     return hashlib.sha256(_canonical_json(filters.fingerprint_payload())).hexdigest()
+
+
+def _object_without_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError
+        result[key] = value
+    return result
 
 
 def encode_cursor(key: CursorKey, filters: DailyReliabilityFilters) -> str:
@@ -51,9 +61,11 @@ def decode_cursor(token: str, filters: DailyReliabilityFilters) -> CursorKey:
     try:
         if not isinstance(token, str) or len(token) > _MAX_CURSOR_LENGTH:
             raise ValueError
+        if _URLSAFE_TOKEN_PATTERN.fullmatch(token) is None:
+            raise ValueError
         padded_token = token + "=" * (-len(token) % 4)
         raw_payload = base64.b64decode(padded_token, altchars=b"-_", validate=True)
-        payload = json.loads(raw_payload)
+        payload = json.loads(raw_payload, object_pairs_hook=_object_without_duplicate_keys)
         if not isinstance(payload, dict) or set(payload) != {"v", "k", "f"}:
             raise ValueError
         if type(payload["v"]) is not int or payload["v"] != 1:
