@@ -158,3 +158,23 @@ def test_monitoring_user_scripts_require_passwords_and_quote_psql_values() -> No
     assert "GRANT netpulse_report TO netpulse_grafana" in init_script
     assert "GRANT netpulse_monitor TO netpulse_postgres_exporter" in init_script
     assert "/docker-entrypoint-initdb.d/01-create-monitoring-users.sh" in provision_script
+
+
+def test_query_api_user_provisioning_is_idempotent_and_grants_only_report_role() -> None:
+    script = (Path(__file__).parents[1] / "init" / "02-create-query-api-user.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "${QUERY_API_POSTGRES_PASSWORD:-}" in script
+    assert '--set query_api_password="$QUERY_API_POSTGRES_PASSWORD"' in script
+    assert "'CREATE ROLE netpulse_query_api LOGIN PASSWORD %L'" in script
+    assert "ALTER ROLE netpulse_query_api LOGIN NOSUPERUSER" in script
+    assert "NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT PASSWORD %L" in script
+    assert "WHERE NOT EXISTS" in script
+    assert "IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'netpulse_report')" in script
+    assert "GRANT netpulse_report TO netpulse_query_api" in script
+    assert "REVOKE %I FROM netpulse_query_api" in script
+    assert "parent.rolname <> 'netpulse_report'" in script
+    assert "GRANT netpulse_app TO netpulse_query_api" not in script
+    assert "GRANT netpulse_monitor TO netpulse_query_api" not in script
+    assert "${PGHOST:-}" in script
