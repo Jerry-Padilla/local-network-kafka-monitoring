@@ -18,7 +18,7 @@ from netpulse_query_api.models import (
     SourceKind,
 )
 from netpulse_query_api.repository import ReliabilityPage
-from psycopg import OperationalError
+from psycopg import OperationalError, ProgrammingError
 from psycopg.errors import QueryCanceled
 from psycopg_pool import PoolTimeout
 
@@ -236,6 +236,7 @@ def test_request_id_accepts_only_printable_ascii_up_to_128(
         (PoolTimeout("postgresql://user:password@host/db"), 503, "database unavailable"),
         (OperationalError("postgresql://user:password@host/db"), 503, "database unavailable"),
         (QueryCanceled("postgresql://user:password@host/db"), 503, "database unavailable"),
+        (ProgrammingError("postgresql://user:password@host/db"), 500, "internal server error"),
         (RuntimeError("postgresql://user:password@host/db"), 500, "internal server error"),
     ],
 )
@@ -255,11 +256,18 @@ def test_dependency_failures_are_generic_and_logs_exclude_exception_text(
 
 
 def test_openapi_exposes_only_two_data_paths_and_cors_is_disabled() -> None:
-    client = TestClient(build_app(FakeRepository()))
+    app = build_app(FakeRepository())
+    client = TestClient(app)
     schema = client.get("/openapi.json").json()
     assert schema["info"]["title"] == "NetPulse Query API"
     assert schema["info"]["version"] == "1.0.0"
     assert set(schema["paths"]) == {"/healthz", "/v1/reliability/daily"}
+    assert {route.path for route in app.routes} == {
+        "/openapi.json",
+        "/docs",
+        "/healthz",
+        "/v1/reliability/daily",
+    }
     assert client.get("/docs").status_code == 200
     response = client.options(
         "/v1/reliability/daily",
@@ -271,10 +279,15 @@ def test_openapi_exposes_only_two_data_paths_and_cors_is_disabled() -> None:
 
 def test_completion_log_has_only_safe_structured_fields(caplog: pytest.LogCaptureFixture) -> None:
     repo = FakeRepository(ReliabilityPage(rows=(_row(),), has_more=False))
-    with caplog.at_level(logging.INFO, logger="netpulse_query_api"):
-        response = TestClient(build_app(repo)).get(
-            "/v1/reliability/daily?agent_id=agent-a", headers={"X-Request-ID": "trace-1"}
-        )
+    logger = logging.getLogger("netpulse_query_api")
+    logger.addHandler(caplog.handler)
+    try:
+        with caplog.at_level(logging.INFO, logger="netpulse_query_api"):
+            response = TestClient(build_app(repo)).get(
+                "/v1/reliability/daily?agent_id=agent-a", headers={"X-Request-ID": "trace-1"}
+            )
+    finally:
+        logger.removeHandler(caplog.handler)
     assert response.status_code == 200
     record = next(record for record in caplog.records if record.name == "netpulse_query_api")
     payload = json.loads(record.getMessage())

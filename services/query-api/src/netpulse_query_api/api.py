@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
-from psycopg import Error as PsycopgError
+from psycopg import OperationalError
 from psycopg_pool import PoolTimeout
 from pydantic import ValidationError
 
@@ -79,7 +79,13 @@ def build_app(
     lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]] | None = None,
 ) -> FastAPI:
     """Build the same routes for isolated tests and production startup."""
-    app = FastAPI(title="NetPulse Query API", version="1.0.0", lifespan=lifespan)
+    app = FastAPI(
+        title="NetPulse Query API",
+        version="1.0.0",
+        lifespan=lifespan,
+        redoc_url=None,
+        swagger_ui_oauth2_redirect_url=None,
+    )
 
     @app.middleware("http")
     async def request_context(request: Request, call_next: Any) -> Response:
@@ -88,7 +94,7 @@ def build_app(
         started = time.perf_counter()
         try:
             response: Response = await call_next(request)
-        except (PoolTimeout, PsycopgError):
+        except (PoolTimeout, OperationalError):
             response = JSONResponse(status_code=503, content={"detail": "database unavailable"})
         except Exception:
             response = JSONResponse(status_code=500, content={"detail": "internal server error"})

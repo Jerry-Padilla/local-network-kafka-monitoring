@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from netpulse_query_api import main
@@ -69,3 +71,34 @@ def test_create_app_opens_and_closes_bounded_read_only_pool(monkeypatch: object)
     kwargs = captured["kwargs"]
     assert isinstance(kwargs, dict)
     assert kwargs["options"] == "-c default_transaction_read_only=on"
+
+
+def test_create_app_suppresses_dependency_and_access_logs(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    credential = "postgresql://user:password@host/db"
+    query = "/v1/reliability/daily?agent_id=private&cursor=opaque-secret"
+    monkeypatch.setattr(
+        main.QueryApiConfig, "from_env", lambda: QueryApiConfig(database_url=credential)
+    )
+    monkeypatch.setattr(main, "AsyncConnectionPool", lambda *_args, **_kwargs: object())
+    names = ("psycopg", "psycopg.pool", "psycopg.generators", "uvicorn.access")
+    loggers = [logging.getLogger(name) for name in names]
+    states = [(logger.level, logger.disabled) for logger in loggers]
+    for logger in loggers:
+        logger.setLevel(logging.INFO)
+        logger.disabled = False
+        logger.addHandler(caplog.handler)
+    try:
+        main.create_app()
+        logging.getLogger("psycopg.pool").warning("error connecting: %s", credential)
+        logging.getLogger("psycopg").warning("connection failure: %s", credential)
+        logging.getLogger("psycopg.generators").warning("failed operation: %s", credential)
+        logging.getLogger("uvicorn.access").info('127.0.0.1 - "GET %s HTTP/1.1" 503', query)
+        assert credential not in caplog.text
+        assert query not in caplog.text
+    finally:
+        for logger, (level, disabled) in zip(loggers, states, strict=True):
+            logger.removeHandler(caplog.handler)
+            logger.setLevel(level)
+            logger.disabled = disabled
