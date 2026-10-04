@@ -15,7 +15,8 @@
 5. Software complete: dimensional reporting, Prometheus, Alertmanager,
    provisioned Grafana dashboards, read-only monitoring identities, and
    reversible failure-drill tooling. Physical Pi acceptance remains the gate.
-6. Add the read-only FastAPI query layer.
+6. Completed: the loopback-only, read-only FastAPI daily reliability query
+   layer passes live HTTP, privilege, index-plan, and operator checks.
 7. Demonstrate orchestration with Kind and Kustomize.
 8. Run physical Pi acceptance and measured performance/failure experiments;
    write capacity conclusions only from captured evidence.

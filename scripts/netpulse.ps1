@@ -8,6 +8,7 @@ param(
         "agent-test", "stream-build", "stream-run", "stream-once", "stream-verify",
         "classifier-build", "classifier-run", "classifier-once", "classifier-verify",
         "analytics-build", "analytics-all", "analytics-verify", "monitoring-render",
+        "api-build", "api-up", "api-verify", "api-down",
         "monitoring-up", "monitoring-verify", "monitoring-down", "failure-drill"
     )]
     [string]$Command = "config",
@@ -201,6 +202,27 @@ switch ($Command) {
             "--profile", "test", "run", "--rm", "--no-deps", "--entrypoint", "python",
             "tests", "scripts/verify_analytics.py"
         )
+    }
+    "api-build" {
+        Invoke-DockerCompose @("--profile", "api", "build", "migrate", "query-api")
+    }
+    "api-up" {
+        Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
+        Invoke-DockerCompose @("--profile", "api", "build", "migrate", "query-api")
+        Invoke-DockerCompose @("run", "--rm", "--no-deps", "migrate")
+        Invoke-DockerCompose @("--profile", "api", "run", "--rm", "--no-deps", "query-api-init")
+        Invoke-DockerCompose @("--profile", "api", "up", "-d", "--no-deps", "--build", "--wait", "query-api")
+    }
+    "api-verify" {
+        Invoke-DockerCompose @(
+            "--profile", "api", "--profile", "test", "run", "--rm", "--no-deps",
+            "--entrypoint", "python", "tests", "scripts/verify_query_api.py",
+            "--base-url", "http://query-api:8000"
+        )
+    }
+    "api-down" {
+        Invoke-DockerCompose @("--profile", "api", "stop", "query-api", "query-api-init")
+        Invoke-DockerCompose @("--profile", "api", "rm", "-f", "query-api", "query-api-init")
     }
     "monitoring-render" {
         if (-not $Target) { throw "monitoring-render requires the Pi IPv4 address or hostname" }

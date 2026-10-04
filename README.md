@@ -61,13 +61,15 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 - An opt-in daily analytics batch that rebuilds exact UTC probe counts and a
   current incident snapshot from deduplicated operational tables, with
   read-only reporting views.
+- A loopback-only, read-only daily reliability query API with bounded
+  cursor pagination and a dedicated PostgreSQL reporting login.
 - Prometheus recording/alert rules, Alertmanager, three provisioned Grafana
   dashboards, read-only PostgreSQL monitoring identities, and matching
   operational runbooks. All UI ports bind only to localhost.
 
 The Raspberry Pi 3 B+ wired collector is mandatory. Its software and bootstrap
 path are implemented, but physical installation, outage recovery, metrics, and
-dashboard acceptance have not yet been executed. Pi Zero models, query APIs,
+dashboard acceptance have not yet been executed. Pi Zero models,
 Kubernetes, and measured capacity results remain outside the completed scope.
 
 ## Quick start
@@ -128,6 +130,10 @@ identifiers.
 | Build analytics job | `make analytics-build` | `./scripts/netpulse.ps1 analytics-build` |
 | Backfill analytics | `make analytics-all` | `./scripts/netpulse.ps1 analytics-all` |
 | Reconcile analytics facts | `make analytics-verify` | `./scripts/netpulse.ps1 analytics-verify` |
+| Build query API | `make api-build` | `./scripts/netpulse.ps1 api-build` |
+| Start query API | `make api-up` | `./scripts/netpulse.ps1 api-up` |
+| Verify query API | `make api-verify` | `./scripts/netpulse.ps1 api-verify` |
+| Stop query API, preserve volumes | `make api-down` | `./scripts/netpulse.ps1 api-down` |
 | Render mandatory Pi target | `make monitoring-render PI_TARGET=192.168.1.42` | `./scripts/netpulse.ps1 monitoring-render 192.168.1.42` |
 | Start monitoring | `make monitoring-up` | `./scripts/netpulse.ps1 monitoring-up` |
 | Verify monitoring | `make monitoring-verify` | `./scripts/netpulse.ps1 monitoring-verify` |
@@ -196,6 +202,7 @@ incident consumers must deduplicate it.
 - [Spark Structured Streaming](docs/streaming.md)
 - [Incident classification](docs/incident-classification.md)
 - [Daily analytics and reporting](docs/analytics.md)
+- [Daily reliability query API](docs/query-api.md)
 - [Failure testing](docs/failure-testing.md)
 - [Security and privacy](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md)

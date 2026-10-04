@@ -89,3 +89,15 @@ def test_example_environment_documents_api_password_and_tuning() -> None:
     assert "NETPULSE_QUERY_API_POOL_MAX_SIZE=5" in example
     assert "NETPULSE_QUERY_API_POOL_ACQUIRE_TIMEOUT_SECONDS=2.0" in example
     assert "NETPULSE_QUERY_API_STATEMENT_TIMEOUT_MS=3000" in example
+
+
+def test_acceptance_container_receives_dedicated_api_login_only() -> None:
+    services = _services()
+    test_environment = services["tests"]["environment"]
+
+    assert test_environment["NETPULSE_QUERY_API_DATABASE_URL"] == (
+        "postgresql://netpulse_query_api:"
+        "${QUERY_API_POSTGRES_PASSWORD:-change-me-local-query-api}"
+        "@postgres:5432/${POSTGRES_DB:-netpulse}"
+    )
+    assert "NETPULSE_QUERY_API_DATABASE_URL" not in services["query-api"]["environment"]

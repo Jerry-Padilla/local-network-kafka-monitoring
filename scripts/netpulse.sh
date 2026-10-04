@@ -147,6 +147,25 @@ case "$command" in
     "${compose[@]}" --profile test run --rm --no-deps --entrypoint python \
       tests scripts/verify_analytics.py
     ;;
+  api-build)
+    "${compose[@]}" --profile api build migrate query-api
+    ;;
+  api-up)
+    "${compose[@]}" up -d --wait postgres
+    "${compose[@]}" --profile api build migrate query-api
+    "${compose[@]}" run --rm --no-deps migrate
+    "${compose[@]}" --profile api run --rm --no-deps query-api-init
+    "${compose[@]}" --profile api up -d --no-deps --build --wait query-api
+    ;;
+  api-verify)
+    "${compose[@]}" --profile api --profile test run --rm --no-deps \
+      --entrypoint python tests scripts/verify_query_api.py \
+      --base-url http://query-api:8000
+    ;;
+  api-down)
+    "${compose[@]}" --profile api stop query-api query-api-init
+    "${compose[@]}" --profile api rm -f query-api query-api-init
+    ;;
   monitoring-render)
     [[ -n "${2:-}" ]] || { echo "monitoring-render requires the Pi IPv4 address or hostname" >&2; exit 2; }
     python "$repository_root/scripts/render_pi_metrics_target.py" "$2"
