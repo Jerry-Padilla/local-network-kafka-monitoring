@@ -43,7 +43,13 @@ docker compose --profile api --profile test run --rm -e NETPULSE_INTEGRATION=1 \
 ## Requests and responses
 
 The API has `GET /healthz` and `GET /v1/reliability/daily`. A healthy response
-is `{"status":"ok"}`. For a filtered page:
+is `{"status":"ok"}`. Check it with:
+
+```bash
+curl 'http://127.0.0.1:8000/healthz'
+```
+
+For a filtered page:
 
 ```bash
 curl --get 'http://127.0.0.1:8000/v1/reliability/daily' \
@@ -64,7 +70,7 @@ The response contains `items`, `next_cursor`, and `limit`. Each item has the
 five ordering fields plus `total_count`, `success_count`, `failure_count`,
 `success_rate_pct`, `latency_count`, `latency_sum_ms`, `mean_latency_ms`,
 `packet_loss_count`, `packet_loss_sum_pct`, and `mean_packet_loss_pct`. Counts
-are JSON numbers. A mean or sum is JSON `null` when no applicable measurement
+are JSON integers. A mean or sum is JSON `null` when no applicable measurement
 exists; it does not mean zero. To fetch the next page, repeat the *same*
 filters and pass the previous `next_cursor` as `cursor`. Treat that cursor as
 opaque; do not decode, log, or edit it. A `null` cursor means no further page.

@@ -262,6 +262,36 @@ def test_openapi_exposes_only_two_data_paths_and_cors_is_disabled() -> None:
     assert schema["info"]["title"] == "NetPulse Query API"
     assert schema["info"]["version"] == "1.0.0"
     assert set(schema["paths"]) == {"/healthz", "/v1/reliability/daily"}
+    operation = schema["paths"]["/v1/reliability/daily"]["get"]
+    parameters = {item["name"]: item for item in operation["parameters"]}
+    assert set(parameters) == {
+        "from_date",
+        "through_date",
+        "agent_id",
+        "endpoint_id",
+        "source_kind",
+        "probe_type",
+        "limit",
+        "cursor",
+    }
+    assert all(item["in"] == "query" for item in parameters.values())
+    for name in ("from_date", "through_date"):
+        assert parameters[name]["schema"]["format"] == "date"
+    for name in ("agent_id", "endpoint_id", "probe_type"):
+        assert parameters[name]["schema"]["minLength"] == 1
+        assert parameters[name]["schema"]["maxLength"] == 128
+    assert parameters["source_kind"]["schema"]["enum"] == [
+        "network_measurement",
+        "service_check",
+    ]
+    assert parameters["limit"]["schema"] == {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200,
+        "default": 50,
+    }
+    assert parameters["cursor"]["schema"]["maxLength"] == 2048
+    assert "422" in operation["responses"]
     assert {route.path for route in app.routes} == {
         "/openapi.json",
         "/docs",

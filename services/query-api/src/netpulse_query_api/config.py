@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, slots=True)
 class QueryApiConfig:
-    database_url: str
+    database_url: str = field(repr=False)
     pool_min_size: int = 1
     pool_max_size: int = 5
     pool_acquire_timeout_seconds: float = 2.0

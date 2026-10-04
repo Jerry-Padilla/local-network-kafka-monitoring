@@ -41,6 +41,51 @@ _QUERY_KEYS = frozenset(
 )
 _LIMIT_PATTERN = re.compile(r"[0-9]+\Z")
 _CURSOR_KEY_FIELDS = {"date_utc", "agent_id", "endpoint_id", "source_kind", "probe_type"}
+_QUERY_PARAMETERS = (
+    [
+        {
+            "name": name,
+            "in": "query",
+            "required": False,
+            "description": "Inclusive UTC date; supply both dates, in order, within 366 days.",
+            "schema": {"type": "string", "format": "date"},
+        }
+        for name in ("from_date", "through_date")
+    ]
+    + [
+        {
+            "name": name,
+            "in": "query",
+            "required": False,
+            "description": "Exact, case-sensitive match.",
+            "schema": {"type": "string", "minLength": 1, "maxLength": 128},
+        }
+        for name in ("agent_id", "endpoint_id", "probe_type")
+    ]
+    + [
+        {
+            "name": "source_kind",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string", "enum": ["network_measurement", "service_check"]},
+        },
+        {
+            "name": "limit",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
+        },
+        {
+            "name": "cursor",
+            "in": "query",
+            "required": False,
+            "description": (
+                "Opaque continuation token from the previous page; keep filters unchanged."
+            ),
+            "schema": {"type": "string", "maxLength": 2048},
+        },
+    ]
+)
 
 
 def _request_id(value: str | None) -> str:
@@ -125,7 +170,12 @@ def build_app(
             raise HTTPException(status_code=503, detail="database unavailable")
         return {"status": "ok"}
 
-    @app.get("/v1/reliability/daily", response_model=DailyReliabilityPage)
+    @app.get(
+        "/v1/reliability/daily",
+        response_model=DailyReliabilityPage,
+        responses={422: {"description": "Invalid query parameters or cursor."}},
+        openapi_extra={"parameters": _QUERY_PARAMETERS},
+    )
     async def daily(request: Request) -> DailyReliabilityPage:
         filters, cursor, limit = _parse_query(request)
         page = await repository.list_daily(filters, cursor, limit)

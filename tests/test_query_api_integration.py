@@ -246,6 +246,31 @@ def _plan_nodes(node: dict[str, object]) -> Iterator[dict[str, object]]:
         yield from _plan_nodes(child)
 
 
+def _uses_api_index_without_sort(plan: dict[str, object]) -> bool:
+    nodes = list(_plan_nodes(plan))
+    return any(
+        node.get("Index Name") == "idx_fact_reliability_daily_api_order" for node in nodes
+    ) and all(node.get("Node Type") not in {"Sort", "Incremental Sort"} for node in nodes)
+
+
+def test_plan_gate_rejects_incremental_sort() -> None:
+    plan = {
+        "Node Type": "Limit",
+        "Plans": [
+            {
+                "Node Type": "Incremental Sort",
+                "Plans": [
+                    {
+                        "Node Type": "Index Scan",
+                        "Index Name": "idx_fact_reliability_daily_api_order",
+                    }
+                ],
+            }
+        ],
+    }
+    assert not _uses_api_index_without_sort(plan)
+
+
 def test_daily_order_query_uses_api_index_without_sort(
     seeded_daily: SeededDaily,
 ) -> None:
@@ -265,8 +290,4 @@ def test_daily_order_query_uses_api_index_without_sort(
                 params,
             ).fetchone()
             assert plan is not None
-            nodes = list(_plan_nodes(plan[0][0]["Plan"]))
-            assert any(
-                node.get("Index Name") == "idx_fact_reliability_daily_api_order" for node in nodes
-            )
-            assert all(node.get("Node Type") != "Sort" for node in nodes)
+            assert _uses_api_index_without_sort(plan[0][0]["Plan"])

@@ -84,3 +84,10 @@ def test_config_loads_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.pool_acquire_timeout_seconds == 1.5
     assert config.statement_timeout_ms == 2500
     assert config.log_level == "DEBUG"
+
+
+def test_config_representation_redacts_database_url() -> None:
+    config = QueryApiConfig(database_url="postgresql://user:private-password@host/netpulse")
+
+    assert "private-password" not in repr(config)
+    assert "private-password" not in str(config)
