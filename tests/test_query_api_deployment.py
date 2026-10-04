@@ -137,7 +137,7 @@ def test_tests_only_url_builder_escapes_reserved_and_invalid_percent_characters(
         pytest.fail("query API test URL did not encode the password", pytrace=False)
 
 
-@pytest.mark.parametrize("failure", ["connection", "cursor", "row"])
+@pytest.mark.parametrize("failure", ["connection", "cursor", "row", "seed", "cleanup"])
 def test_acceptance_failure_output_redacts_sensitive_values(
     pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
@@ -147,6 +147,7 @@ def test_acceptance_failure_output_redacts_sensitive_values(
 import os
 import sys
 from datetime import date
+from psycopg.errors import ForeignKeyViolation
 
 sys.path.insert(0, __TESTS_PATH__)
 import test_query_api_integration as acceptance
@@ -161,6 +162,31 @@ def test_redaction(monkeypatch):
             raise ValueError("connection refused for " + marker)
         monkeypatch.setattr(acceptance.psycopg, "connect", fail_connect)
         acceptance.test_dedicated_login_cannot_read_or_mutate_operational_rows()
+        return
+
+    if case in ("seed", "cleanup"):
+        monkeypatch.setenv("NETPULSE_INTEGRATION", "1")
+        monkeypatch.setenv("NETPULSE_ADMIN_DATABASE_URL", "test-only-admin-url")
+        class FakeConnection:
+            def __enter__(self):
+                return self
+            def __exit__(self, *_args):
+                return False
+            def execute(self, statement, _params=None):
+                if case == "seed" or (case == "cleanup" and statement.startswith("DELETE")):
+                    raise ForeignKeyViolation("failing fixture key " + marker)
+                if statement.startswith("SELECT agent_id"):
+                    self.record = ("agent", "wired_reference", "Agent")
+                elif statement.startswith("SELECT endpoint_id"):
+                    self.record = ("endpoint", "router", "Endpoint")
+                return self
+            def fetchone(self):
+                return self.record
+        monkeypatch.setattr(acceptance, "_connect_safely", lambda _url: FakeConnection())
+        fixture = acceptance.seeded_daily.__wrapped__()
+        next(fixture)
+        if case == "cleanup":
+            next(fixture)
         return
 
     seeded = acceptance.SeededDaily(date(2099, 1, 1), "agent", "endpoint", "probe-")
@@ -199,8 +225,10 @@ def test_redaction(monkeypatch):
         "connection": "database connection failed",
         "cursor": "first page cursor was invalid",
         "row": "agent or endpoint filter was not honored",
+        "seed": "query API fixture seed failed",
+        "cleanup": "query API fixture cleanup failed",
     }[failure]
-    if expected not in output:
-        pytest.fail("privacy regression did not reach its intended failure", pytrace=False)
     if marker in output:
         pytest.fail("acceptance failure output exposed a sensitive value", pytrace=False)
+    if expected not in output:
+        pytest.fail("privacy regression did not reach its intended failure", pytrace=False)

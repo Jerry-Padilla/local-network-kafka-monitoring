@@ -68,60 +68,72 @@ def seeded_daily() -> Iterator[SeededDaily]:
     suffix = uuid4().hex[:12]
     probe_prefix = f"api-acceptance-{suffix}-"
     day = date(2090, 1, 1) + timedelta(days=int(suffix[:6], 16) % 3000)
-    with _connect_safely(admin_url) as connection:
-        agent = connection.execute(
-            "SELECT agent_id, agent_role, display_name FROM agents ORDER BY agent_id LIMIT 1"
-        ).fetchone()
-        endpoint = connection.execute(
-            "SELECT endpoint_id, endpoint_type, display_name "
-            "FROM endpoints ORDER BY endpoint_id LIMIT 1"
-        ).fetchone()
-        _check(agent is not None and endpoint is not None, "fixture dimensions unavailable")
-        connection.execute(
-            "INSERT INTO dim_agent (agent_id, agent_role, display_name) "
-            "VALUES (%s, %s, %s) ON CONFLICT (agent_id) DO NOTHING",
-            agent,
-        )
-        connection.execute(
-            "INSERT INTO dim_endpoint (endpoint_id, endpoint_type, display_name) "
-            "VALUES (%s, %s, %s) ON CONFLICT (endpoint_id) DO NOTHING",
-            endpoint,
-        )
-        connection.execute(
-            "INSERT INTO dim_date (date_utc) VALUES (%s) ON CONFLICT DO NOTHING", (day,)
-        )
-        for index in range(3):
-            probe = f"{probe_prefix}{index}"
+    seed_failed = False
+    try:
+        with _connect_safely(admin_url) as connection:
+            agent = connection.execute(
+                "SELECT agent_id, agent_role, display_name FROM agents ORDER BY agent_id LIMIT 1"
+            ).fetchone()
+            endpoint = connection.execute(
+                "SELECT endpoint_id, endpoint_type, display_name "
+                "FROM endpoints ORDER BY endpoint_id LIMIT 1"
+            ).fetchone()
+            _check(agent is not None and endpoint is not None, "fixture dimensions unavailable")
             connection.execute(
-                "INSERT INTO dim_probe (source_kind, probe_type) "
-                "VALUES ('network_measurement', %s) ON CONFLICT DO NOTHING",
-                (probe,),
+                "INSERT INTO dim_agent (agent_id, agent_role, display_name) "
+                "VALUES (%s, %s, %s) ON CONFLICT (agent_id) DO NOTHING",
+                agent,
             )
             connection.execute(
-                """INSERT INTO fact_reliability_daily
+                "INSERT INTO dim_endpoint (endpoint_id, endpoint_type, display_name) "
+                "VALUES (%s, %s, %s) ON CONFLICT (endpoint_id) DO NOTHING",
+                endpoint,
+            )
+            connection.execute(
+                "INSERT INTO dim_date (date_utc) VALUES (%s) ON CONFLICT DO NOTHING", (day,)
+            )
+            for index in range(3):
+                probe = f"{probe_prefix}{index}"
+                connection.execute(
+                    "INSERT INTO dim_probe (source_kind, probe_type) "
+                    "VALUES ('network_measurement', %s) ON CONFLICT DO NOTHING",
+                    (probe,),
+                )
+                connection.execute(
+                    """INSERT INTO fact_reliability_daily
                    (date_utc, agent_id, endpoint_id, source_kind, probe_type,
                     total_count, success_count, failure_count, latency_sum_ms,
                     latency_count, packet_loss_sum_pct, packet_loss_count)
                    VALUES (%s, %s, %s, 'network_measurement', %s,
                            2, 1, 1, %s, %s, NULL, 0)""",
-                (day, agent[0], endpoint[0], probe, 12.5 if index else None, int(index > 0)),
-            )
+                    (day, agent[0], endpoint[0], probe, 12.5 if index else None, int(index > 0)),
+                )
+    except psycopg.Error:
+        seed_failed = True
+    if seed_failed:
+        pytest.fail("query API fixture seed failed", pytrace=False)
     try:
         yield SeededDaily(day, str(agent[0]), str(endpoint[0]), probe_prefix)
     finally:
-        with _connect_safely(admin_url) as connection:
-            connection.execute(
-                "DELETE FROM fact_reliability_daily WHERE date_utc = %s AND probe_type LIKE %s",
-                (day, f"{probe_prefix}%"),
-            )
-            connection.execute(
-                "DELETE FROM dim_probe WHERE probe_type LIKE %s", (f"{probe_prefix}%",)
-            )
-            connection.execute(
-                "DELETE FROM dim_date WHERE date_utc = %s "
-                "AND NOT EXISTS (SELECT 1 FROM fact_reliability_daily WHERE date_utc = %s)",
-                (day, day),
-            )
+        cleanup_failed = False
+        try:
+            with _connect_safely(admin_url) as connection:
+                connection.execute(
+                    "DELETE FROM fact_reliability_daily WHERE date_utc = %s AND probe_type LIKE %s",
+                    (day, f"{probe_prefix}%"),
+                )
+                connection.execute(
+                    "DELETE FROM dim_probe WHERE probe_type LIKE %s", (f"{probe_prefix}%",)
+                )
+                connection.execute(
+                    "DELETE FROM dim_date WHERE date_utc = %s "
+                    "AND NOT EXISTS (SELECT 1 FROM fact_reliability_daily WHERE date_utc = %s)",
+                    (day, day),
+                )
+        except psycopg.Error:
+            cleanup_failed = True
+        if cleanup_failed:
+            pytest.fail("query API fixture cleanup failed", pytrace=False)
 
 
 def test_live_http_filters_types_and_cursor(seeded_daily: SeededDaily) -> None:
