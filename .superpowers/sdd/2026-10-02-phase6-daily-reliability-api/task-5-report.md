@@ -43,4 +43,4 @@ Added `services/query-api/tests/test_entrypoint.py` to verify the URL round-trip
 
 Preserve the pre-existing Grafana volume change in `docker-compose.yml`; only the query-api environment hunk is part of this fix. Stage the entrypoint, its test, the Dockerfile change, deployment-test changes, and this report. All unrelated existing dirty paths remain untouched and unstaged.
 
-Self-review confirmed the API has no raw URL, admin credential, or application credential in its Compose environment, the percent-encoded password parses back to the original reserved characters, and the Docker command uses exec form. No image build or live PostgreSQL provisioning was run; the existing runtime database limitation still applies. Fix-round commit: `548b5a0`.
+Self-review confirmed the API has no raw URL, admin credential, or application credential in its Compose environment, the percent-encoded password parses back to the original reserved characters, and the Docker command uses exec form. No image build or live PostgreSQL provisioning was run; the existing runtime database limitation still applies. Fix-round code commit: `07558d4`.
