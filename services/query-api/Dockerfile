@@ -11,4 +11,4 @@ RUN python -m pip install --no-cache-dir /app/services/query-api \
     && adduser --system --uid 10001 --ingroup netpulse --home /app netpulse
 
 USER netpulse
-CMD uvicorn netpulse_query_api.main:create_app --factory --host 0.0.0.0 --port 8000
+CMD ["python", "-m", "netpulse_query_api.entrypoint"]

@@ -253,7 +253,11 @@ services:
       query-api-init:
         condition: service_completed_successfully
     environment:
-      NETPULSE_DATABASE_URL: postgresql://netpulse_query_api:${QUERY_API_POSTGRES_PASSWORD:-change-me-local-query-api}@postgres:5432/${POSTGRES_DB:-netpulse}
+      QUERY_API_DATABASE_USER: netpulse_query_api
+      QUERY_API_DATABASE_PASSWORD: ${QUERY_API_POSTGRES_PASSWORD:-change-me-local-query-api}
+      QUERY_API_DATABASE_HOST: postgres
+      QUERY_API_DATABASE_PORT: "5432"
+      QUERY_API_DATABASE_NAME: ${POSTGRES_DB:-netpulse}
       NETPULSE_QUERY_API_POOL_MIN_SIZE: ${NETPULSE_QUERY_API_POOL_MIN_SIZE:-1}
       NETPULSE_QUERY_API_POOL_MAX_SIZE: ${NETPULSE_QUERY_API_POOL_MAX_SIZE:-5}
       NETPULSE_QUERY_API_POOL_ACQUIRE_TIMEOUT_SECONDS: ${NETPULSE_QUERY_API_POOL_ACQUIRE_TIMEOUT_SECONDS:-2.0}

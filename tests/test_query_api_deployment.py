@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _services() -> dict:
-    return yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))["services"]
+def _services() -> dict[str, Any]:
+    document = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    return cast(dict[str, Any], document["services"])
 
 
 def test_api_profile_provisions_after_migration_then_starts_api() -> None:
@@ -42,15 +44,22 @@ def test_api_gets_only_dedicated_login_and_private_port() -> None:
     assert "POSTGRES_USER" in provision_env
     assert "POSTGRES_DB" in provision_env
     assert set(api_env) == {
-        "NETPULSE_DATABASE_URL",
+        "QUERY_API_DATABASE_USER",
+        "QUERY_API_DATABASE_PASSWORD",
+        "QUERY_API_DATABASE_HOST",
+        "QUERY_API_DATABASE_PORT",
+        "QUERY_API_DATABASE_NAME",
         "NETPULSE_QUERY_API_POOL_MIN_SIZE",
         "NETPULSE_QUERY_API_POOL_MAX_SIZE",
         "NETPULSE_QUERY_API_POOL_ACQUIRE_TIMEOUT_SECONDS",
         "NETPULSE_QUERY_API_STATEMENT_TIMEOUT_MS",
         "NETPULSE_QUERY_API_LOG_LEVEL",
     }
-    assert api_env["NETPULSE_DATABASE_URL"].startswith("postgresql://netpulse_query_api:")
-    assert "${QUERY_API_POSTGRES_PASSWORD" in api_env["NETPULSE_DATABASE_URL"]
+    assert api_env["QUERY_API_DATABASE_USER"] == "netpulse_query_api"
+    assert api_env["QUERY_API_DATABASE_PASSWORD"].startswith("${QUERY_API_POSTGRES_PASSWORD")
+    assert api_env["QUERY_API_DATABASE_HOST"] == "postgres"
+    assert api_env["QUERY_API_DATABASE_PORT"] == "5432"
+    assert api_env["QUERY_API_DATABASE_NAME"].startswith("${POSTGRES_DB")
     assert "POSTGRES_ADMIN_PASSWORD" not in str(api_env)
     assert "netpulse_app" not in str(api_env)
     assert api["ports"] == ["127.0.0.1:8000:8000"]
@@ -67,9 +76,7 @@ def test_api_image_is_non_root_and_health_checks_local_endpoint() -> None:
     assert "COPY services/query-api" in dockerfile
     assert "10001" in dockerfile
     assert "USER netpulse" in dockerfile
-    assert "uvicorn netpulse_query_api.main:create_app --factory --host 0.0.0.0 --port 8000" in (
-        dockerfile.replace("\\\n", " ").replace("\n", " ")
-    )
+    assert 'CMD ["python", "-m", "netpulse_query_api.entrypoint"]' in dockerfile
     assert "urllib.request" in str(api["healthcheck"]["test"])
     assert "http://127.0.0.1:8000/healthz" in str(api["healthcheck"]["test"])
 
