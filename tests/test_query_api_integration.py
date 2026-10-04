@@ -14,6 +14,7 @@ from uuid import uuid4
 
 import psycopg
 import pytest
+from psycopg import sql
 
 pytestmark = pytest.mark.integration
 
@@ -37,7 +38,26 @@ def _get(path: str, params: dict[str, str | int] | None = None) -> tuple[int, di
         with urlopen(url, timeout=5) as response:
             return response.status, json.load(response)
     except HTTPError as error:
-        return error.code, json.load(error)
+        try:
+            return error.code, json.load(error)
+        except Exception:
+            pass
+    except Exception:
+        pass
+    pytest.fail("query API request failed", pytrace=False)
+
+
+def _connect_safely(url: str) -> psycopg.Connection[tuple[object, ...]]:
+    try:
+        return psycopg.connect(url)
+    except Exception:
+        pass
+    pytest.fail("database connection failed", pytrace=False)
+
+
+def _check(condition: bool, message: str) -> None:
+    if not condition:
+        pytest.fail(message, pytrace=False)
 
 
 @pytest.fixture
@@ -48,7 +68,7 @@ def seeded_daily() -> Iterator[SeededDaily]:
     suffix = uuid4().hex[:12]
     probe_prefix = f"api-acceptance-{suffix}-"
     day = date(2090, 1, 1) + timedelta(days=int(suffix[:6], 16) % 3000)
-    with psycopg.connect(admin_url) as connection:
+    with _connect_safely(admin_url) as connection:
         agent = connection.execute(
             "SELECT agent_id, agent_role, display_name FROM agents ORDER BY agent_id LIMIT 1"
         ).fetchone()
@@ -56,7 +76,7 @@ def seeded_daily() -> Iterator[SeededDaily]:
             "SELECT endpoint_id, endpoint_type, display_name "
             "FROM endpoints ORDER BY endpoint_id LIMIT 1"
         ).fetchone()
-        assert agent is not None and endpoint is not None
+        _check(agent is not None and endpoint is not None, "fixture dimensions unavailable")
         connection.execute(
             "INSERT INTO dim_agent (agent_id, agent_role, display_name) "
             "VALUES (%s, %s, %s) ON CONFLICT (agent_id) DO NOTHING",
@@ -89,7 +109,7 @@ def seeded_daily() -> Iterator[SeededDaily]:
     try:
         yield SeededDaily(day, str(agent[0]), str(endpoint[0]), probe_prefix)
     finally:
-        with psycopg.connect(admin_url) as connection:
+        with _connect_safely(admin_url) as connection:
             connection.execute(
                 "DELETE FROM fact_reliability_daily WHERE date_utc = %s AND probe_type LIKE %s",
                 (day, f"{probe_prefix}%"),
@@ -110,7 +130,7 @@ def test_live_http_filters_types_and_cursor(seeded_daily: SeededDaily) -> None:
     endpoint_id = seeded_daily.endpoint_id
     prefix = seeded_daily.probe_prefix
     health_status, health = _get("/healthz")
-    assert health_status == 200 and health == {"status": "ok"}
+    _check(health_status == 200 and health == {"status": "ok"}, "query API health failed")
 
     filters: dict[str, str | int] = {
         "from_date": day.isoformat(),
@@ -121,29 +141,35 @@ def test_live_http_filters_types_and_cursor(seeded_daily: SeededDaily) -> None:
         "limit": 2,
     }
     status, first = _get("/v1/reliability/daily", filters)
-    assert status == 200
-    assert first["limit"] == 2
+    _check(status == 200, "first page status was not 200")
+    _check(first["limit"] == 2, "first page limit was wrong")
     first_items = first["items"]
-    assert isinstance(first_items, list)
-    assert len(first_items) == 2
+    _check(isinstance(first_items, list), "first page items were not a list")
+    _check(len(first_items) == 2, "first page item count was wrong")
     cursor = first["next_cursor"]
-    assert isinstance(cursor, str) and cursor
+    _check(isinstance(cursor, str) and bool(cursor), "first page cursor was invalid")
 
     status, second = _get("/v1/reliability/daily", {**filters, "cursor": cursor})
-    assert status == 200 and second["next_cursor"] is None
+    _check(status == 200 and second["next_cursor"] is None, "second page was invalid")
     second_items = second["items"]
-    assert isinstance(second_items, list) and len(second_items) == 1
+    _check(isinstance(second_items, list) and len(second_items) == 1, "second page count was wrong")
     items = first_items + second_items
-    assert all(isinstance(item, dict) for item in items)
+    _check(all(isinstance(item, dict) for item in items), "page item shape was invalid")
     keys = [tuple(item[field] for field in ORDER_FIELDS) for item in items]
-    assert len(set(keys)) == 3
-    assert [item["probe_type"] for item in items] == [f"{prefix}{i}" for i in range(3)]
+    _check(len(set(keys)) == 3, "pages repeated or omitted an ordering key")
+    _check(
+        [item["probe_type"] for item in items] == [f"{prefix}{i}" for i in range(3)],
+        "page ordering was wrong",
+    )
     for item in items:
-        assert item["date_utc"] == day.isoformat()
-        assert item["agent_id"] == agent_id and item["endpoint_id"] == endpoint_id
-        assert item["source_kind"] == "network_measurement"
+        _check(item["date_utc"] == day.isoformat(), "date filter was not honored")
+        _check(
+            item["agent_id"] == agent_id and item["endpoint_id"] == endpoint_id,
+            "agent or endpoint filter was not honored",
+        )
+        _check(item["source_kind"] == "network_measurement", "source filter was not honored")
         for field in ("total_count", "success_count", "failure_count", "latency_count"):
-            assert type(item[field]) is int
+            _check(type(item[field]) is int, "count field was not a JSON integer")
         for field in (
             "success_rate_pct",
             "latency_sum_ms",
@@ -151,33 +177,55 @@ def test_live_http_filters_types_and_cursor(seeded_daily: SeededDaily) -> None:
             "packet_loss_sum_pct",
             "mean_packet_loss_pct",
         ):
-            assert item[field] is None or type(item[field]) in (int, float)
-    assert items[0]["mean_latency_ms"] is None
-    assert items[1]["mean_latency_ms"] == 12.5
+            _check(
+                item[field] is None or type(item[field]) in (int, float),
+                "measure field was neither a JSON number nor null",
+            )
+    _check(items[0]["mean_latency_ms"] is None, "null mean latency was incorrect")
+    _check(items[1]["mean_latency_ms"] == 12.5, "numeric mean latency was incorrect")
 
     status, filtered = _get("/v1/reliability/daily", {**filters, "probe_type": f"{prefix}1"})
-    assert status == 200 and len(filtered["items"]) == 1
+    _check(status == 200 and len(filtered["items"]) == 1, "probe filter was not honored")
     mismatch_status, _ = _get(
         "/v1/reliability/daily", {**filters, "probe_type": f"{prefix}1", "cursor": cursor}
     )
-    assert mismatch_status == 422
+    _check(mismatch_status == 422, "mismatched cursor was not rejected")
+
+
+def _denied_statements() -> tuple[str, ...]:
+    return (
+        "SELECT * FROM network_measurements",
+        "INSERT INTO network_measurements DEFAULT VALUES",
+        "UPDATE network_measurements SET success = FALSE WHERE FALSE",
+        "DELETE FROM network_measurements WHERE FALSE",
+    )
 
 
 def test_dedicated_login_cannot_read_or_mutate_operational_rows() -> None:
     if os.getenv("NETPULSE_INTEGRATION") != "1":
         pytest.skip("set NETPULSE_INTEGRATION=1")
     reader_url = os.environ["NETPULSE_QUERY_API_DATABASE_URL"]
-    with psycopg.connect(reader_url) as connection:
+    with _connect_safely(reader_url) as connection:
         connection.execute("SELECT COUNT(*) FROM v_daily_probe_reliability")
-        for statement in (
-            "SELECT * FROM network_measurements",
-            "INSERT INTO network_measurements DEFAULT VALUES",
-            "UPDATE network_measurements SET success = success WHERE FALSE",
-            "DELETE FROM network_measurements WHERE FALSE",
-        ):
+        for statement in _denied_statements():
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 connection.execute(statement)
             connection.rollback()
+
+
+def test_update_probe_does_not_need_select_privilege() -> None:
+    if os.getenv("NETPULSE_INTEGRATION") != "1":
+        pytest.skip("set NETPULSE_INTEGRATION=1")
+    role = sql.Identifier(f"query_api_update_probe_{uuid4().hex}")
+    with _connect_safely(os.environ["NETPULSE_ADMIN_DATABASE_URL"]) as connection:
+        connection.execute(sql.SQL("CREATE ROLE {} NOLOGIN").format(role))
+        connection.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(role))
+        connection.execute(
+            sql.SQL("GRANT UPDATE (success) ON network_measurements TO {}").format(role)
+        )
+        connection.execute(sql.SQL("SET LOCAL ROLE {}").format(role))
+        connection.execute(_denied_statements()[2])
+        connection.rollback()
 
 
 def _plan_nodes(node: dict[str, object]) -> Iterator[dict[str, object]]:
@@ -191,7 +239,7 @@ def test_daily_order_query_uses_api_index_without_sort(
 ) -> None:
     day = seeded_daily.day
     admin_url = os.environ["NETPULSE_ADMIN_DATABASE_URL"]
-    with psycopg.connect(admin_url) as connection:
+    with _connect_safely(admin_url) as connection:
         connection.execute("SET enable_seqscan = off")
         for where, params in (("", ()), ("WHERE date_utc >= %s AND date_utc <= %s", (day, day))):
             plan = connection.execute(

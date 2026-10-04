@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from runpy import run_path
 from typing import Any, cast
 
+import psycopg
+import pytest
 import yaml
+
+pytest_plugins = ("pytester",)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -93,11 +98,109 @@ def test_example_environment_documents_api_password_and_tuning() -> None:
 
 def test_acceptance_container_receives_dedicated_api_login_only() -> None:
     services = _services()
-    test_environment = services["tests"]["environment"]
+    tests = services["tests"]
+    test_environment = tests["environment"]
 
-    assert test_environment["NETPULSE_QUERY_API_DATABASE_URL"] == (
-        "postgresql://netpulse_query_api:"
-        "${QUERY_API_POSTGRES_PASSWORD:-change-me-local-query-api}"
-        "@postgres:5432/${POSTGRES_DB:-netpulse}"
+    assert tests["entrypoint"] == ["python", "scripts/query_api_test_entrypoint.py"]
+    assert "NETPULSE_QUERY_API_DATABASE_URL" not in test_environment
+    assert test_environment["QUERY_API_DATABASE_USER"] == "netpulse_query_api"
+    assert test_environment["QUERY_API_DATABASE_PASSWORD"].startswith(
+        "${QUERY_API_POSTGRES_PASSWORD"
     )
+    assert test_environment["QUERY_API_DATABASE_HOST"] == "postgres"
+    assert test_environment["QUERY_API_DATABASE_PORT"] == "5432"
+    assert test_environment["QUERY_API_DATABASE_NAME"].startswith("${POSTGRES_DB")
     assert "NETPULSE_QUERY_API_DATABASE_URL" not in services["query-api"]["environment"]
+
+
+def test_tests_only_url_builder_escapes_reserved_and_invalid_percent_characters() -> None:
+    namespace = run_path(str(ROOT / "scripts" / "query_api_test_entrypoint.py"))
+    build_url = namespace["build_query_api_url"]
+    password = "test%GG:@/?#[]"
+    url = build_url("api@test", password, "postgres", "5432", "net/pulse")
+
+    try:
+        parts = psycopg.conninfo.conninfo_to_dict(url)
+    except Exception:
+        parts = None
+    if parts is None:
+        pytest.fail("query API test URL could not be parsed", pytrace=False)
+    if (
+        parts.get("user") != "api@test"
+        or parts.get("password") != password
+        or parts.get("host") != "postgres"
+        or parts.get("port") != "5432"
+        or parts.get("dbname") != "net/pulse"
+    ):
+        pytest.fail("query API test URL changed a connection component", pytrace=False)
+    if password in url or "%25GG" not in url:
+        pytest.fail("query API test URL did not encode the password", pytrace=False)
+
+
+@pytest.mark.parametrize("failure", ["connection", "cursor", "row"])
+def test_acceptance_failure_output_redacts_sensitive_values(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    marker = "sensitive-value-for-test"
+    monkeypatch.setenv("NETPULSE_PRIVACY_MARKER", marker)
+    source = """
+import os
+import sys
+from datetime import date
+
+sys.path.insert(0, __TESTS_PATH__)
+import test_query_api_integration as acceptance
+
+def test_redaction(monkeypatch):
+    marker = os.environ["NETPULSE_PRIVACY_MARKER"]
+    case = __CASE__
+    if case == "connection":
+        monkeypatch.setenv("NETPULSE_INTEGRATION", "1")
+        monkeypatch.setenv("NETPULSE_QUERY_API_DATABASE_URL", "postgresql://test@host/db")
+        def fail_connect(_url):
+            raise ValueError("connection refused for " + marker)
+        monkeypatch.setattr(acceptance.psycopg, "connect", fail_connect)
+        acceptance.test_dedicated_login_cannot_read_or_mutate_operational_rows()
+        return
+
+    seeded = acceptance.SeededDaily(date(2099, 1, 1), "agent", "endpoint", "probe-")
+    def row(index):
+        return {
+            "date_utc": "2099-01-01", "agent_id": marker if index == 1 else "agent",
+            "endpoint_id": "endpoint", "source_kind": "network_measurement",
+            "probe_type": "probe-" + str(index), "total_count": 2,
+            "success_count": 1, "failure_count": 1, "success_rate_pct": 50.0,
+            "latency_count": 0, "latency_sum_ms": None, "mean_latency_ms": None,
+            "packet_loss_count": 0, "packet_loss_sum_pct": None,
+            "mean_packet_loss_pct": None,
+        }
+    first = {"limit": 2, "items": [row(0), row(1)],
+             "next_cursor": {"opaque": marker} if case == "cursor" else "opaque"}
+    second = {"limit": 2, "items": [row(2)], "next_cursor": None}
+    responses = iter([(200, {"status": "ok"}), (200, first), (200, second)])
+    monkeypatch.setattr(acceptance, "_get", lambda *_args, **_kwargs: next(responses))
+    acceptance.test_live_http_filters_types_and_cursor(seeded)
+"""
+    source = source.replace("__TESTS_PATH__", repr(str(ROOT / "tests")))
+    source = source.replace("__CASE__", repr(failure))
+    pytester.makepyfile(test_privacy=source)
+    for name in (
+        "COV_CORE_SOURCE",
+        "COV_CORE_CONFIG",
+        "COV_CORE_DATAFILE",
+        "COV_CORE_BRANCH",
+        "COV_CORE_CONTEXT",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    result = pytester.runpytest_subprocess("-p", "no:cov", "-q", "--tb=short", "test_privacy.py")
+    assert result.ret == 1
+    output = result.stdout.str() + result.stderr.str()
+    expected = {
+        "connection": "database connection failed",
+        "cursor": "first page cursor was invalid",
+        "row": "agent or endpoint filter was not honored",
+    }[failure]
+    if expected not in output:
+        pytest.fail("privacy regression did not reach its intended failure", pytrace=False)
+    if marker in output:
+        pytest.fail("acceptance failure output exposed a sensitive value", pytrace=False)

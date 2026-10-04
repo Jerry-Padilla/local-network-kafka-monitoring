@@ -414,11 +414,16 @@ services:
     build:
       context: .
       dockerfile: tests/Dockerfile
+    entrypoint: ["python", "scripts/query_api_test_entrypoint.py"]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
       NETPULSE_ADMIN_DATABASE_URL: postgresql://netpulse_admin:${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}@postgres:5432/${POSTGRES_DB:-netpulse}
-      NETPULSE_QUERY_API_DATABASE_URL: postgresql://netpulse_query_api:${QUERY_API_POSTGRES_PASSWORD:-change-me-local-query-api}@postgres:5432/${POSTGRES_DB:-netpulse}
+      QUERY_API_DATABASE_USER: netpulse_query_api
+      QUERY_API_DATABASE_PASSWORD: ${QUERY_API_POSTGRES_PASSWORD:-change-me-local-query-api}
+      QUERY_API_DATABASE_HOST: postgres
+      QUERY_API_DATABASE_PORT: "5432"
+      QUERY_API_DATABASE_NAME: ${POSTGRES_DB:-netpulse}
       GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD:-change-me-local-grafana}
       POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:-change-me-local-exporter}
     volumes:
