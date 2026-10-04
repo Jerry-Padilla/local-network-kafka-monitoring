@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import runpy
+import sys
 from importlib import import_module
 
 import pytest
@@ -47,4 +50,36 @@ def test_main_encodes_connection_components_and_execs_uvicorn(monkeypatch: Monke
         "0.0.0.0",
         "--port",
         "8000",
+    ]
+
+
+def test_module_execution_invokes_uvicorn(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("QUERY_API_DATABASE_USER", "netpulse_query_api")
+    monkeypatch.setenv("QUERY_API_DATABASE_PASSWORD", "query-api-password")
+    monkeypatch.setenv("QUERY_API_DATABASE_HOST", "postgres")
+    monkeypatch.setenv("QUERY_API_DATABASE_PORT", "5432")
+    monkeypatch.setenv("QUERY_API_DATABASE_NAME", "netpulse")
+    calls: list[tuple[str, list[str]]] = []
+
+    def capture_execvp(file: str, args: list[str]) -> None:
+        calls.append((file, args))
+
+    monkeypatch.setattr(os, "execvp", capture_execvp)
+    monkeypatch.delitem(sys.modules, "netpulse_query_api.entrypoint", raising=False)
+
+    runpy.run_module("netpulse_query_api.entrypoint", run_name="__main__")
+
+    assert calls == [
+        (
+            "uvicorn",
+            [
+                "uvicorn",
+                "netpulse_query_api.main:create_app",
+                "--factory",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000",
+            ],
+        )
     ]
