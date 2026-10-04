@@ -60,4 +60,4 @@ Added the `if __name__ == "__main__": main()` guard to `services/query-api/src/n
 
 ### Self-review and concerns
 
-The test exercises module execution with a controlled exec handoff, while the existing test continues to cover URL construction and the exact Uvicorn arguments. Only the module guard was added to production code. The live Compose `api-up` was not rerun in this fix round; runtime verification remains with Task 6. Fix-round-2 code commit: pending.
+The test exercises module execution with a controlled exec handoff, while the existing test continues to cover URL construction and the exact Uvicorn arguments. Only the module guard was added to production code. The live Compose `api-up` was not rerun in this fix round; runtime verification remains with Task 6. Fix-round-2 code commit: `d9a7cc5`.
