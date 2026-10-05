@@ -27,12 +27,27 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'netpulse_query_api')
 SELECT format('ALTER ROLE netpulse_query_api LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT PASSWORD %L', :'query_api_password')
 \gexec
 
-SELECT format('REVOKE %I FROM netpulse_query_api', parent.rolname)
+SELECT format(
+  'REVOKE %I FROM netpulse_query_api GRANTED BY %I',
+  parent.rolname,
+  grantor.rolname
+)
 FROM pg_auth_members AS membership
 JOIN pg_roles AS parent ON parent.oid = membership.roleid
 JOIN pg_roles AS member ON member.oid = membership.member
+JOIN pg_roles AS grantor ON grantor.oid = membership.grantor
 WHERE member.rolname = 'netpulse_query_api'
 \gexec
+
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_auth_members AS membership
+    JOIN pg_roles AS member ON member.oid = membership.member
+    WHERE member.rolname = 'netpulse_query_api'
+  ) THEN
+    RAISE EXCEPTION 'query API role retains role memberships';
+  END IF;
+END $$;
 
 REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM netpulse_query_api;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM netpulse_query_api;

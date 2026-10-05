@@ -172,6 +172,9 @@ def test_query_api_user_provisioning_limits_login_to_daily_view() -> None:
     assert "NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT PASSWORD %L" in script
     assert "WHERE NOT EXISTS" in script
     assert "REVOKE %I FROM netpulse_query_api" in script
+    assert "GRANTED BY %I" in script
+    assert "JOIN pg_roles AS grantor ON grantor.oid = membership.grantor" in script
+    assert "RAISE EXCEPTION 'query API role retains role memberships'" in script
     assert "parent.rolname <> 'netpulse_report'" not in script
     assert "GRANT netpulse_report TO netpulse_query_api" not in script
     assert "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM netpulse_query_api" in script
