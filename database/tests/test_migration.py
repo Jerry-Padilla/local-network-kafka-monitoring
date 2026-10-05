@@ -160,7 +160,7 @@ def test_monitoring_user_scripts_require_passwords_and_quote_psql_values() -> No
     assert "/docker-entrypoint-initdb.d/01-create-monitoring-users.sh" in provision_script
 
 
-def test_query_api_user_provisioning_is_idempotent_and_grants_only_report_role() -> None:
+def test_query_api_user_provisioning_limits_login_to_daily_view() -> None:
     script = (Path(__file__).parents[1] / "init" / "02-create-query-api-user.sh").read_text(
         encoding="utf-8"
     )
@@ -171,10 +171,14 @@ def test_query_api_user_provisioning_is_idempotent_and_grants_only_report_role()
     assert "ALTER ROLE netpulse_query_api LOGIN NOSUPERUSER" in script
     assert "NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT PASSWORD %L" in script
     assert "WHERE NOT EXISTS" in script
-    assert "IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'netpulse_report')" in script
-    assert "GRANT netpulse_report TO netpulse_query_api" in script
     assert "REVOKE %I FROM netpulse_query_api" in script
-    assert "parent.rolname <> 'netpulse_report'" in script
+    assert "parent.rolname <> 'netpulse_report'" not in script
+    assert "GRANT netpulse_report TO netpulse_query_api" not in script
+    assert "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM netpulse_query_api" in script
+    assert "REVOKE ALL PRIVILEGES ON SCHEMA public FROM netpulse_query_api" in script
+    assert "GRANT USAGE ON SCHEMA public TO netpulse_query_api" in script
+    assert "to_regclass('public.v_daily_probe_reliability')" in script
+    assert "GRANT SELECT ON public.v_daily_probe_reliability TO netpulse_query_api" in script
     assert "GRANT netpulse_app TO netpulse_query_api" not in script
     assert "GRANT netpulse_monitor TO netpulse_query_api" not in script
     assert "${PGHOST:-}" in script

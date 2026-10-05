@@ -219,6 +219,15 @@ def test_dedicated_login_cannot_read_or_mutate_operational_rows() -> None:
     reader_url = os.environ["NETPULSE_QUERY_API_DATABASE_URL"]
     with _connect_safely(reader_url) as connection:
         connection.execute("SELECT COUNT(*) FROM v_daily_probe_reliability")
+        for view in (
+            "v_incident_summary",
+            "v_sre_agent_status",
+            "v_sre_pipeline_status",
+            "v_grafana_live_measurements",
+        ):
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                connection.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(view)))
+            connection.rollback()
         for statement in _denied_statements():
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 connection.execute(statement)

@@ -82,8 +82,9 @@ unexpected server error returns 500. These errors do not expose SQL or
 database credentials.
 
 The API reads `v_daily_probe_reliability` through the dedicated
-`netpulse_query_api` database login. That login inherits reporting-view SELECT
-permission and cannot read or mutate operational base tables. The API does
+`netpulse_query_api` database login. That login has a direct SELECT grant on
+the daily view and no shared reporting-role membership; it cannot read other
+reporting views or read or mutate operational base tables. The API does
 not perform analytics refreshes. Its results reflect the most recent
 successful batch refresh for each date, not live network state. New events or
 late arrivals need another `analytics-all` run or a selected-date refresh;
