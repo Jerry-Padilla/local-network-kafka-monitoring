@@ -172,9 +172,9 @@ def test_duplicate_raw_event_reports_false_and_skips_redundant_typed_write(
 def test_raw_event_insert_is_idempotent_for_replayed_source_offsets(monkeypatch) -> None:
     monkeypatch.setattr("netpulse_ingestion.repository.ConnectionPool", DuplicatePool)
     repository = PostgresEventRepository("postgresql://example")
-    record = ScenarioGenerator(seed=9).generate_round(
-        "healthy", datetime(2026, 7, 25, tzinfo=UTC)
-    )[0]
+    record = ScenarioGenerator(seed=9).generate_round("healthy", datetime(2026, 7, 25, tzinfo=UTC))[
+        0
+    ]
 
     repository.persist_event(validate_event(record.value), source(offset=0))
 

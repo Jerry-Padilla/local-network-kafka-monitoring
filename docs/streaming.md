@@ -81,5 +81,10 @@ publishes deterministic valid and malformed traffic, executes an
 `available-now` run, and exits nonzero unless all four window sizes, both
 agents, reject evidence, and aggregate-key uniqueness are present.
 
+Host-side PySpark unit tests require JDK 17 with `JAVA_HOME` configured. The
+pytest bootstrap defaults `PYSPARK_PYTHON` and `PYSPARK_DRIVER_PYTHON` to the
+Python interpreter running pytest, while preserving either variable when it is
+set explicitly.
+
 The first run needs access to Maven Central for the pinned Spark Kafka
 connector. Later runs reuse the named Ivy cache.

@@ -112,9 +112,12 @@ def test_failure_drills_wait_for_ingestor_recovery_and_allow_dead_letter_process
     commands: list[tuple[str, ...]] = []
     waits: list[tuple[str, bool, float]] = []
 
-    drills._wait_for_alert = lambda name, *, firing, observe, timeout_seconds: waits.append(
-        (name, firing, timeout_seconds)
-    ) or []
+    drills._wait_for_alert = (
+        lambda name, *, firing, observe, timeout_seconds: waits.append(
+            (name, firing, timeout_seconds)
+        )
+        or []
+    )
 
     drills.dependency_outage(
         "postgres",

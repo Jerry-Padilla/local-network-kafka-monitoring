@@ -41,9 +41,7 @@ def _wait_for_alert(
     while True:
         alerts = observe()
         matching_states = {
-            item.get("state")
-            for item in alerts
-            if item.get("labels", {}).get("alertname") == name
+            item.get("state") for item in alerts if item.get("labels", {}).get("alertname") == name
         }
         reached_state = (
             "firing" in matching_states
