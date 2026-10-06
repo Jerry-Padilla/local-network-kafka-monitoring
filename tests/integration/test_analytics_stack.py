@@ -467,7 +467,7 @@ def test_sre_views_and_monitoring_logins_are_read_only() -> None:
             "INSERT INTO agents (agent_id, agent_role, display_name) "
             "SELECT 'grafana-privilege-probe', 'wired_reference', 'Grafana privilege probe' "
             "WHERE FALSE",
-            "UPDATE agents SET display_name = display_name WHERE FALSE",
+            "UPDATE agents SET display_name = 'Grafana privilege probe' WHERE FALSE",
             "DELETE FROM network_measurements WHERE FALSE",
         ):
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
