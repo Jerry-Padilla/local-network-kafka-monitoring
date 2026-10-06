@@ -33,12 +33,22 @@ cursor if present. Its output contains only health and row counts. `api-down`
 stops and removes only `query-api` and `query-api-init`; it keeps PostgreSQL,
 other services, and named volumes.
 
-For the live HTTP, privilege, and index-plan acceptance gate, run:
+The integration suites are split by required environment. The legacy
+`test-integration` command runs only the core stack tests and does not start or
+require the API. For the exact live HTTP, privilege, pagination, and index-plan
+gate, use `api-integration`; it starts and waits for the API before running the
+container-safe API tests:
 
 ```bash
-docker compose --profile api --profile test run --rm -e NETPULSE_INTEGRATION=1 \
-  tests -p no:cacheprovider tests/test_query_api_integration.py -q
+./scripts/netpulse.sh api-integration
 ```
+
+On Windows use `./scripts/netpulse.ps1 api-integration`. The delegated-grant
+provisioning regression itself shells out to Docker, so run it separately on
+the host with `make api-provisioning-test`,
+`./scripts/netpulse.sh api-provisioning-test`, or
+`./scripts/netpulse.ps1 api-provisioning-test`. It is never selected inside the
+tests container.
 
 ## Requests and responses
 

@@ -21,6 +21,8 @@ pythonpath = [
 ]
 markers = [
   "integration: requires the Docker Compose stack",
+  "api_integration: requires the running query API and its PostgreSQL dependencies",
+  "host_integration: requires host access to the Docker CLI and daemon",
 ]
 
 [tool.coverage.run]

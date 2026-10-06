@@ -29,7 +29,8 @@ case "$command" in
     ;;
   test-integration)
     "${compose[@]}" up -d --wait event-ingestor
-    "${compose[@]}" --profile test run --rm -e NETPULSE_INTEGRATION=1 tests -p no:cacheprovider -m integration
+    "${compose[@]}" --profile test run --rm -e NETPULSE_INTEGRATION=1 tests \
+      -p no:cacheprovider -m "integration and not api_integration and not host_integration"
     ;;
   up)
     "${compose[@]}" up -d --build --wait event-ingestor
@@ -156,6 +157,22 @@ case "$command" in
     "${compose[@]}" run --rm --no-deps migrate
     "${compose[@]}" --profile api run --rm --no-deps query-api-init
     "${compose[@]}" --profile api up -d --no-deps --build --wait query-api
+    ;;
+  api-integration)
+    "${compose[@]}" up -d --wait postgres
+    "${compose[@]}" --profile api --profile test build migrate query-api tests
+    "${compose[@]}" run --rm --no-deps migrate
+    "${compose[@]}" --profile api run --rm --no-deps query-api-init
+    "${compose[@]}" --profile api up -d --no-deps --build --wait query-api
+    "${compose[@]}" --profile api --profile test run --rm --no-deps \
+      -e NETPULSE_INTEGRATION=1 tests -p no:cacheprovider -m api_integration \
+      tests/test_query_api_integration.py -q
+    ;;
+  api-provisioning-test)
+    host_python=python3
+    [[ ! -x "$repository_root/.venv/bin/python" ]] || host_python="$repository_root/.venv/bin/python"
+    "$host_python" -m pytest -p no:cacheprovider -m host_integration \
+      tests/test_query_api_provisioning_live.py -q
     ;;
   api-verify)
     "${compose[@]}" --profile api --profile test run --rm --no-deps \

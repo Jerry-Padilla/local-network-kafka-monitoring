@@ -8,7 +8,8 @@ param(
         "agent-test", "stream-build", "stream-run", "stream-once", "stream-verify",
         "classifier-build", "classifier-run", "classifier-once", "classifier-verify",
         "analytics-build", "analytics-all", "analytics-verify", "monitoring-render",
-        "api-build", "api-up", "api-verify", "api-down",
+        "api-build", "api-up", "api-integration", "api-provisioning-test",
+        "api-verify", "api-down",
         "monitoring-up", "monitoring-verify", "monitoring-down", "failure-drill"
     )]
     [string]$Command = "config",
@@ -57,7 +58,11 @@ switch ($Command) {
     }
     "test-integration" {
         Invoke-DockerCompose @("up", "-d", "--wait", "event-ingestor")
-        Invoke-DockerCompose @("--profile", "test", "run", "--rm", "-e", "NETPULSE_INTEGRATION=1", "tests", "-p", "no:cacheprovider", "-m", "integration")
+        Invoke-DockerCompose @(
+            "--profile", "test", "run", "--rm", "-e", "NETPULSE_INTEGRATION=1",
+            "tests", "-p", "no:cacheprovider", "-m",
+            "integration and not api_integration and not host_integration"
+        )
     }
     "up" {
         Invoke-DockerCompose @("up", "-d", "--build", "--wait", "event-ingestor")
@@ -212,6 +217,26 @@ switch ($Command) {
         Invoke-DockerCompose @("run", "--rm", "--no-deps", "migrate")
         Invoke-DockerCompose @("--profile", "api", "run", "--rm", "--no-deps", "query-api-init")
         Invoke-DockerCompose @("--profile", "api", "up", "-d", "--no-deps", "--build", "--wait", "query-api")
+    }
+    "api-integration" {
+        Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
+        Invoke-DockerCompose @(
+            "--profile", "api", "--profile", "test", "build", "migrate", "query-api", "tests"
+        )
+        Invoke-DockerCompose @("run", "--rm", "--no-deps", "migrate")
+        Invoke-DockerCompose @("--profile", "api", "run", "--rm", "--no-deps", "query-api-init")
+        Invoke-DockerCompose @("--profile", "api", "up", "-d", "--no-deps", "--build", "--wait", "query-api")
+        Invoke-DockerCompose @(
+            "--profile", "api", "--profile", "test", "run", "--rm", "--no-deps",
+            "-e", "NETPULSE_INTEGRATION=1", "tests", "-p", "no:cacheprovider",
+            "-m", "api_integration", "tests/test_query_api_integration.py", "-q"
+        )
+    }
+    "api-provisioning-test" {
+        $WorktreePython = Join-Path $RepositoryRoot ".venv\Scripts\python.exe"
+        $Python = if (Test-Path $WorktreePython) { $WorktreePython } else { "python" }
+        & $Python -m pytest -p no:cacheprovider -m host_integration tests/test_query_api_provisioning_live.py -q
+        if ($LASTEXITCODE -ne 0) { throw "Host provisioning regression failed" }
     }
     "api-verify" {
         Invoke-DockerCompose @(

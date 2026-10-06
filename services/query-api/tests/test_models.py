@@ -149,6 +149,42 @@ def test_rows_reject_nonfinite_aggregates() -> None:
             DailyReliabilityRow(**{**valid, field: math.inf})
 
 
+def test_database_rows_and_cursor_keys_preserve_identifier_whitespace() -> None:
+    values = {
+        "date_utc": date(2026, 10, 1),
+        "agent_id": " agent ",
+        "endpoint_id": " endpoint ",
+        "source_kind": SourceKind.SERVICE_CHECK,
+        "probe_type": " http ",
+    }
+
+    key = CursorKey(**values)
+    row = DailyReliabilityRow(
+        **values,
+        total_count=1,
+        success_count=1,
+        failure_count=0,
+        success_rate_pct=100.0,
+        latency_count=0,
+        latency_sum_ms=None,
+        mean_latency_ms=None,
+        packet_loss_count=0,
+        packet_loss_sum_pct=None,
+        mean_packet_loss_pct=None,
+    )
+
+    assert (key.agent_id, key.endpoint_id, key.probe_type) == (
+        " agent ",
+        " endpoint ",
+        " http ",
+    )
+    assert (row.agent_id, row.endpoint_id, row.probe_type) == (
+        " agent ",
+        " endpoint ",
+        " http ",
+    )
+
+
 def test_page_limit_and_cursor_key_are_bounded() -> None:
     for limit in (0, 201):
         with pytest.raises(ValidationError):

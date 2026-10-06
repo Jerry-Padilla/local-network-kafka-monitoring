@@ -14,7 +14,10 @@ class SourceKind(StrEnum):
     SERVICE_CHECK = "service_check"
 
 
-Identifier = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+RequestIdentifier = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+]
+StoredIdentifier = Annotated[str, StringConstraints(min_length=1, max_length=128, pattern=r"\S")]
 Count = Annotated[int, Field(ge=0, strict=True)]
 
 
@@ -23,10 +26,10 @@ class DailyReliabilityFilters(BaseModel):
 
     from_date: date | None = None
     through_date: date | None = None
-    agent_id: Identifier | None = None
-    endpoint_id: Identifier | None = None
+    agent_id: RequestIdentifier | None = None
+    endpoint_id: RequestIdentifier | None = None
     source_kind: SourceKind | None = None
-    probe_type: Identifier | None = None
+    probe_type: RequestIdentifier | None = None
 
     @model_validator(mode="after")
     def validate_date_range(self) -> Self:
@@ -55,10 +58,10 @@ class CursorKey(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     date_utc: date
-    agent_id: Identifier
-    endpoint_id: Identifier
+    agent_id: StoredIdentifier
+    endpoint_id: StoredIdentifier
     source_kind: SourceKind
-    probe_type: Identifier
+    probe_type: StoredIdentifier
 
 
 class DailyReliabilityRow(CursorKey):

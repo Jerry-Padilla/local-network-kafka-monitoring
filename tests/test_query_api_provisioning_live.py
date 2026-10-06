@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.host_integration]
 ROOT = Path(__file__).resolve().parents[1]
 _PSQL = (
     "exec",

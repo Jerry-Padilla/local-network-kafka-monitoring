@@ -16,7 +16,7 @@ import psycopg
 import pytest
 from psycopg import sql
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.api_integration]
 
 API_URL = "http://query-api:8000"
 ORDER_FIELDS = ("date_utc", "agent_id", "endpoint_id", "source_kind", "probe_type")
@@ -262,6 +262,15 @@ def _uses_api_index_without_sort(plan: dict[str, object]) -> bool:
     ) and all(node.get("Node Type") not in {"Sort", "Incremental Sort"} for node in nodes)
 
 
+def _api_index_condition(plan: dict[str, object]) -> str | None:
+    for node in _plan_nodes(plan):
+        if node.get("Index Name") == "idx_fact_reliability_daily_api_order":
+            condition = node.get("Index Cond")
+            if isinstance(condition, str):
+                return condition
+    return None
+
+
 def test_plan_gate_rejects_incremental_sort() -> None:
     plan = {
         "Node Type": "Limit",
@@ -300,3 +309,43 @@ def test_daily_order_query_uses_api_index_without_sort(
             ).fetchone()
             assert plan is not None
             assert _uses_api_index_without_sort(plan[0][0]["Plan"])
+
+
+def test_cursor_seek_queries_use_api_index_without_sort(seeded_daily: SeededDaily) -> None:
+    day = seeded_daily.day
+    admin_url = os.environ["NETPULSE_ADMIN_DATABASE_URL"]
+    cursor_tail = (
+        day,
+        seeded_daily.agent_id,
+        seeded_daily.endpoint_id,
+        "network_measurement",
+        f"{seeded_daily.probe_prefix}1",
+    )
+    queries = (
+        (
+            "WHERE date_utc = %s AND "
+            "(agent_id, endpoint_id, source_kind, probe_type) > (%s, %s, %s, %s)",
+            cursor_tail,
+        ),
+        ("WHERE date_utc < %s", (day,)),
+    )
+    with _connect_safely(admin_url) as connection:
+        connection.execute("SET enable_seqscan = off")
+        for index, (where, params) in enumerate(queries):
+            plan = connection.execute(
+                "EXPLAIN (FORMAT JSON) SELECT date_utc, agent_id, endpoint_id, "
+                "source_kind, probe_type, total_count, success_count, failure_count, "
+                "success_rate_pct, latency_count, latency_sum_ms, mean_latency_ms, "
+                "packet_loss_count, packet_loss_sum_pct, mean_packet_loss_pct "
+                f"FROM v_daily_probe_reliability {where} "
+                "ORDER BY date_utc DESC, agent_id ASC, endpoint_id ASC, "
+                "source_kind ASC, probe_type ASC LIMIT 3",
+                params,
+            ).fetchone()
+            assert plan is not None
+            root = plan[0][0]["Plan"]
+            assert _uses_api_index_without_sort(root)
+            condition = _api_index_condition(root)
+            assert condition is not None and "date_utc" in condition
+            if index == 0:
+                assert "agent_id" in condition and "probe_type" in condition

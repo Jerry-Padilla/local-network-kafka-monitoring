@@ -63,6 +63,22 @@ def test_cursor_round_trip_uses_complete_ordering_key() -> None:
     assert decode_cursor(token, filters) == _key()
 
 
+def test_cursor_round_trip_accepts_maximum_non_bmp_identifier() -> None:
+    filters = DailyReliabilityFilters()
+    key = CursorKey(
+        date_utc=date(2026, 10, 1),
+        agent_id="agent-1",
+        endpoint_id="\U0001f4e1" * 128,
+        source_kind=SourceKind.NETWORK_MEASUREMENT,
+        probe_type="icmp",
+    )
+
+    token = encode_cursor(key, filters)
+
+    assert len(token) <= 2048
+    assert decode_cursor(token, filters) == key
+
+
 def test_cursor_is_stable_for_equivalent_filters() -> None:
     first = DailyReliabilityFilters(agent_id=" agent-1 ", probe_type=" icmp ")
     second = DailyReliabilityFilters(agent_id="agent-1", probe_type="icmp")

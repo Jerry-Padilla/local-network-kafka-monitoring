@@ -132,6 +132,8 @@ identifiers.
 | Reconcile analytics facts | `make analytics-verify` | `./scripts/netpulse.ps1 analytics-verify` |
 | Build query API | `make api-build` | `./scripts/netpulse.ps1 api-build` |
 | Start query API | `make api-up` | `./scripts/netpulse.ps1 api-up` |
+| Run query API integration tests | `make api-integration` | `./scripts/netpulse.ps1 api-integration` |
+| Run host provisioning regression | `make api-provisioning-test` | `./scripts/netpulse.ps1 api-provisioning-test` |
 | Verify query API | `make api-verify` | `./scripts/netpulse.ps1 api-verify` |
 | Stop query API, preserve volumes | `make api-down` | `./scripts/netpulse.ps1 api-down` |
 | Render mandatory Pi target | `make monitoring-render PI_TARGET=192.168.1.42` | `./scripts/netpulse.ps1 monitoring-render 192.168.1.42` |

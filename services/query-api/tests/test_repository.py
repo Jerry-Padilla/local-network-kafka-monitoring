@@ -30,6 +30,8 @@ class FakeCursor:
         self.pool.statements.append((query, params))
 
     async def fetchall(self) -> list[dict[str, Any]]:
+        if self.pool.row_batches:
+            return self.pool.row_batches.pop(0)
         return self.pool.rows
 
 
@@ -58,8 +60,14 @@ class FakeConnection:
 
 
 class FakePool:
-    def __init__(self, rows: list[dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self,
+        rows: list[dict[str, Any]] | None = None,
+        *,
+        row_batches: list[list[dict[str, Any]]] | None = None,
+    ) -> None:
         self.rows = rows or []
+        self.row_batches = row_batches or []
         self.statements: list[tuple[str, tuple[object, ...] | None]] = []
         self.row_factories: list[object | None] = []
         self.in_transaction = False
@@ -75,9 +83,9 @@ class FakePool:
         return self
 
 
-def _row(agent_id: str, endpoint_id: str) -> dict[str, Any]:
+def _row(agent_id: str, endpoint_id: str, *, day: date = date(2026, 10, 1)) -> dict[str, Any]:
     return {
-        "date_utc": date(2026, 10, 1),
+        "date_utc": day,
         "agent_id": agent_id,
         "endpoint_id": endpoint_id,
         "source_kind": "service_check",
@@ -95,7 +103,7 @@ def _row(agent_id: str, endpoint_id: str) -> dict[str, Any]:
     }
 
 
-def test_list_daily_uses_fixed_view_projection_bound_filters_and_full_keyset() -> None:
+def test_list_daily_uses_fixed_view_projection_and_bound_filters() -> None:
     injected_agent = "agent' OR TRUE --"
     pool = FakePool([_row("agent-a", "endpoint-a")])
     repository = PostgresReliabilityRepository(pool, statement_timeout_ms=2500)
@@ -107,15 +115,7 @@ def test_list_daily_uses_fixed_view_projection_bound_filters_and_full_keyset() -
         source_kind=SourceKind.SERVICE_CHECK,
         probe_type="http",
     )
-    cursor = CursorKey(
-        date_utc=date(2026, 10, 1),
-        agent_id="agent-a",
-        endpoint_id="endpoint-a",
-        source_kind=SourceKind.SERVICE_CHECK,
-        probe_type="http",
-    )
-
-    page = asyncio.run(repository.list_daily(filters, cursor, 2))
+    page = asyncio.run(repository.list_daily(filters, None, 2))
 
     assert page.has_more is False
     assert len(page.rows) == 1
@@ -146,10 +146,6 @@ def test_list_daily_uses_fixed_view_projection_bound_filters_and_full_keyset() -
     assert "endpoint_id = %s" in normalized
     assert "source_kind = %s" in normalized
     assert "probe_type = %s" in normalized
-    assert (
-        "(date_utc < %s OR (date_utc = %s AND "
-        "(agent_id, endpoint_id, source_kind, probe_type) > (%s, %s, %s, %s)))" in normalized
-    )
     assert normalized.endswith(
         "ORDER BY date_utc DESC, agent_id ASC, endpoint_id ASC, "
         "source_kind ASC, probe_type ASC LIMIT %s"
@@ -161,14 +157,55 @@ def test_list_daily_uses_fixed_view_projection_bound_filters_and_full_keyset() -
         "endpoint-a",
         "service_check",
         "http",
-        date(2026, 10, 1),
-        date(2026, 10, 1),
-        "agent-a",
-        "endpoint-a",
-        "service_check",
-        "http",
         3,
     )
+
+
+def test_cursor_page_uses_two_bounded_index_seek_queries_in_order() -> None:
+    pool = FakePool(
+        row_batches=[
+            [_row(" agent-a ", " endpoint-b ")],
+            [
+                _row("agent-a", "endpoint-a", day=date(2026, 9, 30)),
+                _row("agent-b", "endpoint-a", day=date(2026, 9, 30)),
+            ],
+        ]
+    )
+    repository = PostgresReliabilityRepository(pool)
+    cursor = CursorKey(
+        date_utc=date(2026, 10, 1),
+        agent_id=" agent-a ",
+        endpoint_id=" endpoint-a ",
+        source_kind=SourceKind.SERVICE_CHECK,
+        probe_type=" http ",
+    )
+
+    page = asyncio.run(repository.list_daily(DailyReliabilityFilters(), cursor, 2))
+
+    assert page.has_more is True
+    assert [(row.date_utc, row.agent_id, row.endpoint_id) for row in page.rows] == [
+        (date(2026, 10, 1), " agent-a ", " endpoint-b "),
+        (date(2026, 9, 30), "agent-a", "endpoint-a"),
+    ]
+    same_date_query, same_date_params = pool.statements[2]
+    older_date_query, older_date_params = pool.statements[3]
+    same_date_sql = " ".join(same_date_query.split())
+    older_date_sql = " ".join(older_date_query.split())
+    assert " OR " not in same_date_sql
+    assert "date_utc = %s" in same_date_sql
+    assert "(agent_id, endpoint_id, source_kind, probe_type) > (%s, %s, %s, %s)" in same_date_sql
+    assert same_date_params == (
+        date(2026, 10, 1),
+        " agent-a ",
+        " endpoint-a ",
+        "service_check",
+        " http ",
+        3,
+    )
+    assert " OR " not in older_date_sql
+    assert "date_utc < %s" in older_date_sql
+    assert "(agent_id, endpoint_id, source_kind, probe_type) >" not in older_date_sql
+    assert older_date_params == (date(2026, 10, 1), 2)
 
 
 def test_list_daily_truncates_lookahead_and_keeps_complete_same_date_key() -> None:

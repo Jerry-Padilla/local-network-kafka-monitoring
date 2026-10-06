@@ -23,11 +23,11 @@ from psycopg.errors import QueryCanceled
 from psycopg_pool import PoolTimeout
 
 
-def _row(agent_id: str = "agent-a") -> DailyReliabilityRow:
+def _row(agent_id: str = "agent-a", endpoint_id: str = "endpoint-a") -> DailyReliabilityRow:
     return DailyReliabilityRow(
         date_utc=date(2026, 10, 1),
         agent_id=agent_id,
-        endpoint_id="endpoint-a",
+        endpoint_id=endpoint_id,
         source_kind=SourceKind.SERVICE_CHECK,
         probe_type="http",
         total_count=2,
@@ -134,6 +134,50 @@ def test_daily_next_cursor_uses_last_returned_row_and_filter_fingerprint() -> No
     assert second.status_code == 200
     assert repo.list_calls[-1][1] is not None
     assert repo.list_calls[-1][1].agent_id == "agent-a"
+
+
+def test_daily_continuation_accepts_cursor_for_maximum_non_bmp_endpoint() -> None:
+    row = _row(endpoint_id="\U0001f4e1" * 128)
+    repo = FakeRepository(ReliabilityPage(rows=(row,), has_more=True))
+    client = TestClient(build_app(repo))
+
+    first = client.get("/v1/reliability/daily", params={"limit": "1"})
+    cursor = first.json()["next_cursor"]
+    second = client.get("/v1/reliability/daily", params={"limit": "1", "cursor": cursor})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert repo.list_calls[-1][1] is not None
+    assert repo.list_calls[-1][1].endpoint_id == row.endpoint_id
+
+
+def test_daily_pagination_preserves_whitespace_in_stored_ordering_keys() -> None:
+    first_row = _row(agent_id=" agent ", endpoint_id=" endpoint-a ")
+    second_row = _row(agent_id=" agent ", endpoint_id=" endpoint-b ")
+
+    class PagingRepository(FakeRepository):
+        async def list_daily(
+            self, filters: DailyReliabilityFilters, cursor: CursorKey | None, limit: int
+        ) -> ReliabilityPage:
+            self.list_calls.append((filters, cursor, limit))
+            if cursor is None:
+                return ReliabilityPage(rows=(first_row,), has_more=True)
+            assert cursor.agent_id == " agent "
+            assert cursor.endpoint_id == " endpoint-a "
+            return ReliabilityPage(rows=(second_row,), has_more=False)
+
+    repo = PagingRepository()
+    client = TestClient(build_app(repo))
+
+    first = client.get("/v1/reliability/daily", params={"limit": "1"})
+    second = client.get(
+        "/v1/reliability/daily",
+        params={"limit": "1", "cursor": first.json()["next_cursor"]},
+    )
+
+    assert first.json()["items"][0]["endpoint_id"] == " endpoint-a "
+    assert second.status_code == 200
+    assert second.json()["items"][0]["endpoint_id"] == " endpoint-b "
 
 
 def test_daily_passes_all_exact_filters_and_inclusive_date_bounds() -> None:

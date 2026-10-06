@@ -19,10 +19,10 @@ _FILTER_SQL = {
     "source_kind": "source_kind = %s",
     "probe_type": "probe_type = %s",
 }
-_CURSOR_SQL = (
-    "(date_utc < %s OR (date_utc = %s AND "
-    "(agent_id, endpoint_id, source_kind, probe_type) > (%s, %s, %s, %s)))"
+_SAME_DATE_CURSOR_SQL = (
+    "date_utc = %s AND (agent_id, endpoint_id, source_kind, probe_type) > (%s, %s, %s, %s)"
 )
+_OLDER_DATE_CURSOR_SQL = "date_utc < %s"
 _PROJECTION = (
     "date_utc, agent_id, endpoint_id, source_kind, probe_type, "
     "total_count, success_count, failure_count, success_rate_pct, "
@@ -30,6 +30,14 @@ _PROJECTION = (
     "packet_loss_count, packet_loss_sum_pct, mean_packet_loss_pct"
 )
 _ORDER_BY = "date_utc DESC, agent_id ASC, endpoint_id ASC, source_kind ASC, probe_type ASC"
+
+
+def _select_query(where: list[str]) -> str:
+    where_sql = f" WHERE {' AND '.join(where)}" if where else ""
+    return (
+        f"SELECT {_PROJECTION} FROM v_daily_probe_reliability{where_sql} "
+        f"ORDER BY {_ORDER_BY} LIMIT %s"
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,26 +82,6 @@ class PostgresReliabilityRepository:
             if value is not None:
                 where.append(predicate)
                 params.append(value.value if field == "source_kind" else value)
-        if cursor is not None:
-            where.append(_CURSOR_SQL)
-            params.extend(
-                (
-                    cursor.date_utc,
-                    cursor.date_utc,
-                    cursor.agent_id,
-                    cursor.endpoint_id,
-                    cursor.source_kind.value,
-                    cursor.probe_type,
-                )
-            )
-
-        where_sql = f" WHERE {' AND '.join(where)}" if where else ""
-        query = (
-            f"SELECT {_PROJECTION} FROM v_daily_probe_reliability{where_sql} "
-            f"ORDER BY {_ORDER_BY} LIMIT %s"
-        )
-        params.append(limit + 1)
-
         async with (
             self._pool.connection() as connection,
             connection.transaction(),
@@ -104,8 +92,31 @@ class PostgresReliabilityRepository:
                 "SELECT set_config('statement_timeout', %s, true)",
                 (str(self._statement_timeout_ms),),
             )
-            await db_cursor.execute(query, tuple(params))
-            records = await db_cursor.fetchall()
+            target_count = limit + 1
+            if cursor is None:
+                await db_cursor.execute(_select_query(where), (*params, target_count))
+                records = await db_cursor.fetchall()
+            else:
+                same_date_where = [*where, _SAME_DATE_CURSOR_SQL]
+                same_date_params = (
+                    *params,
+                    cursor.date_utc,
+                    cursor.agent_id,
+                    cursor.endpoint_id,
+                    cursor.source_kind.value,
+                    cursor.probe_type,
+                    target_count,
+                )
+                await db_cursor.execute(_select_query(same_date_where), same_date_params)
+                records = await db_cursor.fetchall()
+                remaining = target_count - len(records)
+                if remaining > 0:
+                    older_date_where = [*where, _OLDER_DATE_CURSOR_SQL]
+                    await db_cursor.execute(
+                        _select_query(older_date_where),
+                        (*params, cursor.date_utc, remaining),
+                    )
+                    records.extend(await db_cursor.fetchall())
 
         rows = tuple(DailyReliabilityRow.model_validate(record) for record in records[:limit])
         return ReliabilityPage(rows=rows, has_more=len(records) > limit)
