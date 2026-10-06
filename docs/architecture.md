@@ -22,7 +22,18 @@
   Alembic owns schema evolution.
 - Prometheus scrapes bounded service metrics plus Kafka/PostgreSQL exporters;
   Alertmanager routes actionable local alerts; Grafana reads Prometheus and
-  four read-only PostgreSQL views. Their host ports are loopback-only.
+  five read-only PostgreSQL views: `v_daily_probe_reliability`,
+  `v_incident_summary`, `v_sre_agent_status`, `v_sre_pipeline_status`, and
+  `v_grafana_live_measurements`. Their configured host ports are loopback-only.
+
+The network dashboard's four live panels read ingested typed measurements
+through `v_grafana_live_measurements`, using original event time rather than
+ingestion or dashboard refresh time. Replayed events can therefore appear in
+the selected range. Legends distinguish agent, target, and measurement type;
+the packet-loss chart includes only router and external ping. Wi-Fi diagnostics
+encode connection state rather than measured ping loss. Probe success is a
+per-observation 0%/100% result. These prototype views provide no production SLA
+or guarantee of continuous real-time delivery.
 
 The Raspberry Pi 3 B+ is the required wired reference collector. The Compose
 `network-agent` is a repeatable `container_probe` fixture for development and

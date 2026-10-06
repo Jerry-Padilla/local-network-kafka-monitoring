@@ -445,9 +445,30 @@ def test_sre_views_and_monitoring_logins_are_read_only() -> None:
     with psycopg.connect(grafana_url) as connection:
         connection.execute("SELECT COUNT(*) FROM v_sre_agent_status")
         connection.execute("SELECT COUNT(*) FROM v_sre_pipeline_status")
+        live = connection.execute(
+            "SELECT event_time, agent_id, target_id, measurement_type, success, "
+            "latency_ms, packet_loss_pct, jitter_ms FROM v_grafana_live_measurements LIMIT 1"
+        )
+        assert live.description is not None
+        assert [column.name for column in live.description] == [
+            "event_time",
+            "agent_id",
+            "target_id",
+            "measurement_type",
+            "success",
+            "latency_ms",
+            "packet_loss_pct",
+            "jitter_ms",
+        ]
+        live.fetchall()
         for statement in (
             "SELECT * FROM agents",
-            "UPDATE agents SET display_name = display_name",
+            "SELECT * FROM network_measurements",
+            "INSERT INTO agents (agent_id, agent_role, display_name) "
+            "SELECT 'grafana-privilege-probe', 'wired_reference', 'Grafana privilege probe' "
+            "WHERE FALSE",
+            "UPDATE agents SET display_name = display_name WHERE FALSE",
+            "DELETE FROM network_measurements WHERE FALSE",
         ):
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 connection.execute(statement)

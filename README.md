@@ -151,6 +151,25 @@ Alertmanager at port 9093. The illustrative objectives are 99% successful
 ingestion, p95 processing below one second, and freshness below 60 seconds
 while traffic is active; they are portfolio targets, not production SLO claims.
 
+The Grafana login reads five PostgreSQL views through `netpulse_report`:
+`v_daily_probe_reliability`, `v_incident_summary`, `v_sre_agent_status`,
+`v_sre_pipeline_status`, and `v_grafana_live_measurements`. It cannot read or
+modify operational tables. The network dashboard defaults to the last hour
+and refreshes every ten seconds; daily Probe Success overrides the range to
+30 days. Live Latency, Live Packet Loss, Live Probe Success, and Latest Readings
+show ingested measurements by original event time, including replayed events
+within the selected range. A refresh does not guarantee new observations or
+continuous real-time delivery, and these panels imply no production SLA.
+
+Live series identify agent, target, and `measurement_type`. Packet loss includes
+only `router_ping` and `external_ping`; Wi-Fi diagnostics encode connection
+state rather than measured ping loss. Live Probe Success plots each observation
+as 0% or 100%, rather than an aggregate success rate. Latest Readings shows at
+most 100 rows, newest event time first, with latency/jitter in milliseconds and
+loss in percent; interpret Wi-Fi loss values as connection state. Grafana mounts
+only the owned `provisioning/datasources` and `provisioning/dashboards`
+subdirectories read-only, alongside the dashboard JSON directory.
+
 ## Simulator examples
 
 ```bash

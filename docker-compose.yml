@@ -397,7 +397,8 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
-      - ./deployment/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deployment/observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./deployment/observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./deployment/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     healthcheck:
