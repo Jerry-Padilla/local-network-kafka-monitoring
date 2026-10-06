@@ -145,6 +145,12 @@ def test_monitoring_profile_uses_pinned_images_and_private_ports() -> None:
     assert services["kafka"]["ports"][0].startswith("${KAFKA_EXTERNAL_BIND_ADDRESS:-127.0.0.1}:")
 
 
+def test_kafka_logs_use_the_persistent_data_directory() -> None:
+    kafka = _compose()["services"]["kafka"]
+
+    assert kafka["environment"]["KAFKA_LOG_DIRS"] == "/var/lib/kafka/data"
+
+
 def test_monitoring_services_have_storage_healthchecks_and_safe_credentials() -> None:
     compose = _compose()
     services = compose["services"]
