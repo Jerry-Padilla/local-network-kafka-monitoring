@@ -170,6 +170,24 @@ loss in percent; interpret Wi-Fi loss values as connection state. Grafana mounts
 only the owned `provisioning/datasources` and `provisioning/dashboards`
 subdirectories read-only, alongside the dashboard JSON directory.
 
+## Tableau BI Dashboard
+
+NetPulse can optionally export its read-only PostgreSQL reporting views as
+privacy-reduced CSV datasets for a manually built Tableau Public workbook:
+
+`PostgreSQL reporting views → Python export job → CSV files → Tableau Public`
+
+Run `make tableau-export` on POSIX systems or
+`./scripts/netpulse.ps1 tableau-export` on Windows after refreshing analytics.
+See the [Tableau dashboard guide](docs/tableau-dashboard.md) for the dataset
+schemas, synthetic demo workflow, workbook design, and public-data privacy
+warning.
+
+**Tableau Public workbook:** `<add URL after publication>`
+
+Tableau is not required for the core NetPulse application, Grafana dashboards,
+or any ingestion, streaming, classification, API, or monitoring workflow.
+
 ## Simulator examples
 
 ```bash
@@ -223,6 +241,7 @@ incident consumers must deduplicate it.
 - [Spark Structured Streaming](docs/streaming.md)
 - [Incident classification](docs/incident-classification.md)
 - [Daily analytics and reporting](docs/analytics.md)
+- [Tableau Public dashboard](docs/tableau-dashboard.md)
 - [Daily reliability query API](docs/query-api.md)
 - [Failure testing](docs/failure-testing.md)
 - [Security and privacy](docs/security.md)

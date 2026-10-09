@@ -25,6 +25,10 @@
   five read-only PostgreSQL views: `v_daily_probe_reliability`,
   `v_incident_summary`, `v_sre_agent_status`, `v_sre_pipeline_status`, and
   `v_grafana_live_measurements`. Their configured host ports are loopback-only.
+- The optional Tableau exporter reads the same approved reporting layer, removes
+  sensitive identifiers, and atomically writes local CSV files for manual use in
+  Tableau Public. It is a one-shot downstream consumer and does not replace
+  Grafana or connect Tableau to PostgreSQL.
 
 The network dashboard's four live panels read ingested typed measurements
 through `v_grafana_live_measurements`, using original event time rather than
@@ -38,6 +42,21 @@ or guarantee of continuous real-time delivery.
 The Raspberry Pi 3 B+ is the required wired reference collector. The Compose
 `network-agent` is a repeatable `container_probe` fixture for development and
 failure evidence; it does not replace physical Pi acceptance.
+
+```mermaid
+flowchart LR
+    A[Raspberry Pi or simulator] --> K[Kafka KRaft]
+    K --> I[Ingestor and Spark]
+    I --> P[(PostgreSQL)]
+    P --> R[Read-only reporting views]
+    R --> G[Grafana dashboards]
+    R --> E[Optional Python Tableau export]
+    E --> C[Local CSV files]
+    C --> T[Manual Tableau Public workbook]
+```
+
+Tableau Public never consumes Kafka directly. PostgreSQL remains private and
+loopback-bound; only inspected CSV extracts are candidates for public publishing.
 
 ```mermaid
 sequenceDiagram
