@@ -84,3 +84,38 @@ class SourceAssessment:
             SourceStatus.DELAYED,
             SourceStatus.LEGITIMATELY_EMPTY,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class ReconciliationResult:
+    daily_source_rows: int
+    daily_fact_rows: int
+    daily_mismatch_rows: int
+    source_incidents: int
+    fact_incidents: int
+    incident_mismatch_rows: int
+
+    @property
+    def valid(self) -> bool:
+        return self.daily_mismatch_rows == 0 and self.incident_mismatch_rows == 0
+
+    def require_valid(self) -> None:
+        if not self.valid:
+            mismatches = self.daily_mismatch_rows + self.incident_mismatch_rows
+            raise RuntimeError(f"{mismatches} reconciliation mismatches detected")
+
+
+@dataclass(frozen=True, slots=True)
+class ReportingValidation:
+    reporting_rows: int
+    duplicate_rows: int
+    invalid_rows: int
+    run_matches: bool
+
+    @property
+    def valid(self) -> bool:
+        return self.duplicate_rows == 0 and self.invalid_rows == 0 and self.run_matches
+
+    def require_valid(self) -> None:
+        if not self.valid:
+            raise RuntimeError("reporting validation failed")
