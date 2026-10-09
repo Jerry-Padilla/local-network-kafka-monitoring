@@ -148,6 +148,15 @@ case "$command" in
     "${compose[@]}" --profile test run --rm --no-deps --entrypoint python \
       tests scripts/verify_analytics.py
     ;;
+  tableau-export)
+    mkdir -p "$repository_root/tableau_exports"
+    "${compose[@]}" up -d --wait postgres
+    "${compose[@]}" --profile analytics build migrate analytics
+    "${compose[@]}" run --rm migrate
+    "${compose[@]}" --profile analytics run --rm --no-deps \
+      --user "$(id -u):$(id -g)" -e HOME=/tmp \
+      --entrypoint netpulse-tableau-export analytics --output-dir /exports
+    ;;
   api-build)
     "${compose[@]}" --profile api build migrate query-api
     ;;

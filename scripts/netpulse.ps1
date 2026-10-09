@@ -7,7 +7,8 @@ param(
         "kafka-topics", "db-shell", "config", "agent-build", "agent-validate",
         "agent-test", "stream-build", "stream-run", "stream-once", "stream-verify",
         "classifier-build", "classifier-run", "classifier-once", "classifier-verify",
-        "analytics-build", "analytics-all", "analytics-verify", "monitoring-render",
+        "analytics-build", "analytics-all", "analytics-verify", "tableau-export",
+        "monitoring-render",
         "api-build", "api-up", "api-integration", "api-provisioning-test",
         "api-verify", "api-down",
         "monitoring-up", "monitoring-verify", "monitoring-down", "failure-drill"
@@ -206,6 +207,18 @@ switch ($Command) {
         Invoke-DockerCompose @(
             "--profile", "test", "run", "--rm", "--no-deps", "--entrypoint", "python",
             "tests", "scripts/verify_analytics.py"
+        )
+    }
+    "tableau-export" {
+        $OutputDirectory = Join-Path $RepositoryRoot "tableau_exports"
+        New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+        Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
+        Invoke-DockerCompose @("--profile", "analytics", "build", "migrate", "analytics")
+        Invoke-DockerCompose @("run", "--rm", "migrate")
+        Invoke-DockerCompose @(
+            "--profile", "analytics", "run", "--rm", "--no-deps",
+            "--entrypoint", "netpulse-tableau-export", "analytics",
+            "--output-dir", "/exports"
         )
     }
     "api-build" {

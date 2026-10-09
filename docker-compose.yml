@@ -222,6 +222,8 @@ services:
     environment:
       NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
       NETPULSE_LOG_LEVEL: ${NETPULSE_LOG_LEVEL:-INFO}
+    volumes:
+      - ./tableau_exports:/exports
     restart: "no"
     networks: [backend]
 

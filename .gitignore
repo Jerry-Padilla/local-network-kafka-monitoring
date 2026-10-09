@@ -6,6 +6,7 @@
 /.coverage
 /coverage.xml
 /htmlcov/
+/tableau_exports/
 /dist/
 /build/
 /*.egg-info/
