@@ -30,6 +30,8 @@ def promote_staged_export(output_dir: Path) -> None:
         raise ValueError("staged Tableau export must be a real directory")
     if {path.name for path in staged.iterdir()} != EXPECTED_FILES:
         raise ValueError("staged Tableau export must contain exactly four expected CSV files")
+    if any(path.is_symlink() or not path.is_file() for path in staged.iterdir()):
+        raise ValueError("staged Tableau export must contain regular CSV files")
 
     token = uuid.uuid4().hex
     incoming = output.parent / f".{output.name}.incoming.{token}"

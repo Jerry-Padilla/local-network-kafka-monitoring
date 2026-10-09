@@ -257,6 +257,17 @@ def test_naive_timestamp_is_rejected() -> None:
         build_export_bundle(TableauSnapshot(incidents=(incident,)))
 
 
+def test_incident_timestamp_validation_precedes_sorting() -> None:
+    aware = _incident()
+    naive = _incident(
+        incident_id="00000000-0000-0000-0000-000000000002",
+        start_time=datetime(2026, 10, 8, 2),
+    )
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        build_export_bundle(TableauSnapshot(incidents=(aware, naive)))
+
+
 def test_equal_duplicate_incidents_collapse_but_conflicts_raise() -> None:
     incident = _incident()
     equal_bundle = build_export_bundle(TableauSnapshot(incidents=(incident, incident)))

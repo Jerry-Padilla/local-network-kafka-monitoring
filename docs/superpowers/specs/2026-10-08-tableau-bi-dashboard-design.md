@@ -1,7 +1,7 @@
 # Tableau BI Dashboard Export Design
 
-**Date:** 2026-10-08  
-**Branch:** `feature/tableau-bi-dashboard`  
+**Date:** 2026-10-08
+**Branch:** `feature/tableau-bi-dashboard`
 **Base:** `origin/master` at `e64292f`
 
 ## Purpose

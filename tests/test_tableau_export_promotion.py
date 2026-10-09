@@ -45,6 +45,19 @@ def test_promote_staged_export_rejects_an_incomplete_bundle(tmp_path: Path) -> N
     assert (output_dir / ".next").is_dir()
 
 
+def test_promote_staged_export_rejects_non_file_csv_entries(tmp_path: Path) -> None:
+    output_dir = tmp_path / "tableau_exports"
+    _stage_complete_export(output_dir)
+    invalid_entry = output_dir / ".next" / "incidents.csv"
+    invalid_entry.unlink()
+    invalid_entry.mkdir()
+
+    with pytest.raises(ValueError, match="regular CSV files"):
+        promote_tableau_export.promote_staged_export(output_dir)
+
+    assert invalid_entry.is_dir()
+
+
 def test_promotion_failure_restores_the_previous_host_export(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

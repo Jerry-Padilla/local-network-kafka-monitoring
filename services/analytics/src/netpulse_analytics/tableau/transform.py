@@ -178,12 +178,16 @@ def _agent_dataset(rows: tuple[DailyReliabilitySource, ...]) -> CsvDataset:
     return CsvDataset(columns=AGENT_COLUMNS, rows=tuple(output))
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("export timestamps must be timezone-aware")
+    return value.astimezone(UTC)
+
+
 def _format_utc(value: datetime | None) -> str | None:
     if value is None:
         return None
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError("export timestamps must be timezone-aware")
-    utc_value = value.astimezone(UTC)
+    utc_value = _as_utc(value)
     timespec = "microseconds" if utc_value.microsecond else "seconds"
     return utc_value.isoformat(timespec=timespec).replace("+00:00", "Z")
 
@@ -197,7 +201,9 @@ def _incident_dataset(rows: tuple[IncidentSource, ...]) -> CsvDataset:
         by_id[row.incident_id] = row
 
     output = []
-    for row in sorted(by_id.values(), key=lambda item: (item.start_time, item.incident_id)):
+    for row in sorted(
+        by_id.values(), key=lambda item: (_as_utc(item.start_time), item.incident_id)
+    ):
         output.append(
             (
                 str(row.incident_id),

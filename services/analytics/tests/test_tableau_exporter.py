@@ -66,6 +66,23 @@ def test_publish_export_creates_all_four_csvs_for_empty_datasets(tmp_path: Path)
     assert _read_exact(output_dir / "incidents.csv") == "incident_id\n"
 
 
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        {},
+        {"../escaped.csv": CsvDataset(("value",), (("unsafe",),))},
+    ],
+)
+def test_publish_export_rejects_bundles_outside_the_four_file_contract(
+    tmp_path: Path,
+    datasets: dict[str, CsvDataset],
+) -> None:
+    with pytest.raises(ValueError, match="exactly four expected CSV files"):
+        publish_export(ExportBundle(datasets=datasets), tmp_path / "tableau_exports")
+
+    assert not (tmp_path / "escaped.csv").exists()
+
+
 def test_publish_export_replaces_a_complete_previous_export(tmp_path: Path) -> None:
     output_dir = tmp_path / "tableau_exports"
     output_dir.mkdir()

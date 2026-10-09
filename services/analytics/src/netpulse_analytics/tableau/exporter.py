@@ -11,6 +11,18 @@ from pathlib import Path
 
 from netpulse_analytics.tableau.models import ExportBundle
 
+EXPECTED_FILES = {
+    "agent_performance.csv",
+    "daily_reliability.csv",
+    "incidents.csv",
+    "pipeline_health.csv",
+}
+
+
+def _validate_bundle(bundle: ExportBundle) -> None:
+    if set(bundle.datasets) != EXPECTED_FILES:
+        raise ValueError("Tableau export must contain exactly four expected CSV files")
+
 
 def _validate_output_path(output_dir: Path) -> Path:
     output = output_dir.absolute()
@@ -59,6 +71,7 @@ def _swap_directories(staging_dir: Path, output_dir: Path) -> None:
 
 
 def publish_export(bundle: ExportBundle, output_dir: Path) -> None:
+    _validate_bundle(bundle)
     output = _validate_output_path(output_dir)
     staging_dir = Path(
         tempfile.mkdtemp(dir=output.parent, prefix=f".{output.name}.staging.")
