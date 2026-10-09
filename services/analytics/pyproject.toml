@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 netpulse-analytics = "netpulse_analytics.cli:main"
+netpulse-tableau-export = "netpulse_analytics.tableau.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/netpulse_analytics"]
