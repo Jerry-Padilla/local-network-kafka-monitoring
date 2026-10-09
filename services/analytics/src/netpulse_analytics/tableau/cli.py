@@ -16,7 +16,7 @@ from netpulse_analytics.tableau.service import export_tableau
 def parse_args(argv: list[str] | None) -> Path:
     parser = argparse.ArgumentParser(description="Export NetPulse reporting data for Tableau")
     parser.add_argument("--output-dir", type=Path, default=Path("tableau_exports"))
-    return parser.parse_args(argv).output_dir
+    return Path(parser.parse_args(argv).output_dir)
 
 
 def main(argv: list[str] | None = None) -> int:

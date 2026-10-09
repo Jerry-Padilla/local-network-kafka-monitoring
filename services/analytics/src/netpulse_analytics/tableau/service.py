@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 from netpulse_analytics.config import TableauExportConfig
 from netpulse_analytics.tableau.exporter import publish_export

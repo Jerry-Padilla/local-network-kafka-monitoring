@@ -218,8 +218,10 @@ switch ($Command) {
         Invoke-DockerCompose @(
             "--profile", "analytics", "run", "--rm", "--no-deps",
             "--entrypoint", "netpulse-tableau-export", "analytics",
-            "--output-dir", "/exports"
+            "--output-dir", "/exports/.next"
         )
+        & python (Join-Path $RepositoryRoot "scripts/promote_tableau_export.py") $OutputDirectory
+        if ($LASTEXITCODE -ne 0) { throw "Tableau export promotion failed" }
     }
     "api-build" {
         Invoke-DockerCompose @("--profile", "api", "build", "migrate", "query-api")

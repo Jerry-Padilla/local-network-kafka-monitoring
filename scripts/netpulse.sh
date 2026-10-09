@@ -155,7 +155,9 @@ case "$command" in
     "${compose[@]}" run --rm migrate
     "${compose[@]}" --profile analytics run --rm --no-deps \
       --user "$(id -u):$(id -g)" -e HOME=/tmp \
-      --entrypoint netpulse-tableau-export analytics --output-dir /exports
+        --entrypoint netpulse-tableau-export analytics --output-dir /exports/.next
+      python3 "$repository_root/scripts/promote_tableau_export.py" \
+        "$repository_root/tableau_exports"
     ;;
   api-build)
     "${compose[@]}" --profile api build migrate query-api

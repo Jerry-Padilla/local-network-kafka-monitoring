@@ -6,6 +6,7 @@ import csv
 import os
 import shutil
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 from netpulse_analytics.tableau.models import ExportBundle
@@ -53,10 +54,8 @@ def _swap_directories(staging_dir: Path, output_dir: Path) -> None:
             os.replace(backup_dir, output_dir)
         raise
     if backup_dir is not None:
-        try:
+        with suppress(OSError):
             _remove_tree(backup_dir)
-        except OSError:
-            pass
 
 
 def publish_export(bundle: ExportBundle, output_dir: Path) -> None:
@@ -68,7 +67,5 @@ def publish_export(bundle: ExportBundle, output_dir: Path) -> None:
         _write_staging(bundle, staging_dir)
         _swap_directories(staging_dir, output)
     finally:
-        try:
+        with suppress(OSError):
             _remove_tree(staging_dir)
-        except OSError:
-            pass

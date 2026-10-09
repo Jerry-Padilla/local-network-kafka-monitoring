@@ -21,13 +21,15 @@ class PostgresTableauRepository:
         self._database_url = database_url
 
     def load_snapshot(self) -> TableauSnapshot:
-        with psycopg.connect(self._database_url) as connection:
-            with connection.transaction():
-                connection.execute(
-                    "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
-                )
-                connection.execute("SET LOCAL TIME ZONE 'UTC'")
-                daily_rows = connection.execute(
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.transaction(),
+        ):
+            connection.execute(
+                "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
+            )
+            connection.execute("SET LOCAL TIME ZONE 'UTC'")
+            daily_rows = connection.execute(
                     """SELECT
                            d.date_utc,
                            d.agent_id,
@@ -45,8 +47,8 @@ class PostgresTableauRepository:
                        LEFT JOIN v_sre_agent_status a ON a.agent_id = d.agent_id
                        ORDER BY d.date_utc, d.agent_id, d.source_kind, d.probe_type,
                                 d.endpoint_id"""
-                ).fetchall()
-                incident_rows = connection.execute(
+            ).fetchall()
+            incident_rows = connection.execute(
                     """SELECT
                            incident_id,
                            incident_type,
@@ -62,8 +64,8 @@ class PostgresTableauRepository:
                            affected_endpoint_count
                        FROM v_incident_summary
                        ORDER BY start_time, incident_id"""
-                ).fetchall()
-                pipeline_rows = connection.execute(
+            ).fetchall()
+            pipeline_rows = connection.execute(
                     """SELECT
                            observed_at,
                            last_raw_event_received_at,
@@ -75,7 +77,7 @@ class PostgresTableauRepository:
                            pending_incident_publication_count
                        FROM v_sre_pipeline_status
                        ORDER BY observed_at"""
-                ).fetchall()
+            ).fetchall()
 
         return TableauSnapshot(
             daily_reliability=tuple(self._daily_row(row) for row in daily_rows),
