@@ -11,6 +11,7 @@ from netpulse_analytics.orchestration.models import (
     DateRange,
     ReconciliationResult,
     ReportingValidation,
+    SourceAssessment,
     SourceSnapshot,
 )
 
@@ -143,6 +144,85 @@ class PostgresOrchestrationRepository:
             invalid_rows=int(reporting[2]),
             run_matches=bool(run[0]),
         )
+
+    def start_run(
+        self,
+        run_key: str,
+        selected: DateRange,
+        assessment: SourceAssessment,
+    ) -> None:
+        with psycopg.connect(self._database_url) as connection:
+            connection.execute(
+                """INSERT INTO analytics_orchestration_runs (
+                       run_key, from_date, through_date, status, source_status,
+                       source_observation_count, attempt_count, started_at, completed_at,
+                       analytics_run_id, daily_mismatch_rows, incident_mismatch_rows,
+                       failed_task_id, error_type
+                   ) VALUES (
+                       %(run_key)s, %(from_date)s, %(through_date)s, 'running',
+                       %(source_status)s, %(source_observation_count)s, 1,
+                       CURRENT_TIMESTAMP, NULL, NULL, NULL, NULL, NULL, NULL
+                   )
+                   ON CONFLICT (run_key) DO UPDATE SET
+                       from_date = EXCLUDED.from_date,
+                       through_date = EXCLUDED.through_date,
+                       status = 'running',
+                       source_status = EXCLUDED.source_status,
+                       source_observation_count = EXCLUDED.source_observation_count,
+                       attempt_count = analytics_orchestration_runs.attempt_count + 1,
+                       started_at = CURRENT_TIMESTAMP,
+                       completed_at = NULL,
+                       analytics_run_id = NULL,
+                       daily_mismatch_rows = NULL,
+                       incident_mismatch_rows = NULL,
+                       failed_task_id = NULL,
+                       error_type = NULL""",
+                {
+                    "run_key": run_key,
+                    "from_date": selected.from_date,
+                    "through_date": selected.through_date,
+                    "source_status": assessment.status.value,
+                    "source_observation_count": assessment.snapshot.observation_count,
+                },
+            )
+
+    def record_success(
+        self,
+        run_key: str,
+        analytics_run_id: int,
+        result: ReconciliationResult,
+    ) -> None:
+        with psycopg.connect(self._database_url) as connection:
+            connection.execute(
+                """UPDATE analytics_orchestration_runs
+                   SET status = 'success', completed_at = CURRENT_TIMESTAMP,
+                       analytics_run_id = %(analytics_run_id)s,
+                       daily_mismatch_rows = %(daily_mismatch_rows)s,
+                       incident_mismatch_rows = %(incident_mismatch_rows)s,
+                       failed_task_id = NULL, error_type = NULL
+                   WHERE run_key = %(run_key)s""",
+                {
+                    "run_key": run_key,
+                    "analytics_run_id": analytics_run_id,
+                    "daily_mismatch_rows": result.daily_mismatch_rows,
+                    "incident_mismatch_rows": result.incident_mismatch_rows,
+                },
+            )
+
+    def record_failure(self, run_key: str, failed_task_id: str, error_type: str) -> None:
+        with psycopg.connect(self._database_url) as connection:
+            connection.execute(
+                """UPDATE analytics_orchestration_runs
+                   SET status = 'failed', completed_at = CURRENT_TIMESTAMP,
+                       failed_task_id = %(failed_task_id)s,
+                       error_type = %(error_type)s
+                   WHERE run_key = %(run_key)s""",
+                {
+                    "run_key": run_key,
+                    "failed_task_id": failed_task_id,
+                    "error_type": error_type,
+                },
+            )
 
 
 _DAILY_RECONCILIATION_SQL = """WITH observations AS (

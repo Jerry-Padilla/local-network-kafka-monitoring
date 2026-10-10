@@ -11,6 +11,7 @@ services:
       GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD:-change-me-local-grafana}
       POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:-change-me-local-exporter}
       QUERY_API_POSTGRES_PASSWORD: ${QUERY_API_POSTGRES_PASSWORD:-change-me-local-query-api}
+      AIRFLOW_NETPULSE_DB_PASSWORD: ${AIRFLOW_NETPULSE_DB_PASSWORD:-change-me-local-airflow-app}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:

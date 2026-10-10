@@ -4,7 +4,13 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
-from netpulse_analytics.orchestration.models import DateRange
+from netpulse_analytics.orchestration.models import (
+    DateRange,
+    ReconciliationResult,
+    SourceAssessment,
+    SourceSnapshot,
+    SourceStatus,
+)
 from netpulse_analytics.orchestration.repository import PostgresOrchestrationRepository
 
 
@@ -120,3 +126,31 @@ def test_database_check_propagates_transient_driver_errors(
 
     with pytest.raises(OSError, match="database unavailable"):
         PostgresOrchestrationRepository("postgresql://example").check_database()
+
+
+def test_run_state_uses_idempotent_key_and_records_only_safe_failure_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository, connection = _repository(monkeypatch, {})
+    selected = DateRange(date(2026, 10, 8), date(2026, 10, 8))
+    snapshot = SourceSnapshot(10, 10, 2, 0, None, None, 2.0)
+    assessment = SourceAssessment(SourceStatus.HEALTHY, snapshot, "healthy")
+
+    repository.start_run("scheduled__2026-10-09", selected, assessment)
+    repository.record_success(
+        "scheduled__2026-10-09",
+        analytics_run_id=17,
+        result=ReconciliationResult(3, 3, 0, 2, 2, 0),
+    )
+    repository.record_failure(
+        "scheduled__2026-10-09",
+        failed_task_id="reconcile_analytics",
+        error_type="RuntimeError",
+    )
+
+    start_sql, start_params = connection.statements[0]
+    assert "ON CONFLICT (run_key) DO UPDATE" in start_sql
+    assert start_params["run_key"] == "scheduled__2026-10-09"
+    assert connection.statements[1][1]["analytics_run_id"] == 17
+    failure_params = connection.statements[2][1]
+    assert set(failure_params) == {"run_key", "failed_task_id", "error_type"}
