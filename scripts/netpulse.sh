@@ -206,6 +206,9 @@ case "$command" in
   failure-drill)
     python "$repository_root/scripts/failure_drills.py" "${2:-all}"
     ;;
+  airflow-init|airflow-up|airflow-test|airflow-verify|airflow-down)
+    python "$repository_root/scripts/airflow_workflows.py" "$command"
+    ;;
   *)
     echo "Unknown command: $command" >&2
     exit 2

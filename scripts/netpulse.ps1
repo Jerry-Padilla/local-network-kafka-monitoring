@@ -10,7 +10,8 @@ param(
         "analytics-build", "analytics-all", "analytics-verify", "monitoring-render",
         "api-build", "api-up", "api-integration", "api-provisioning-test",
         "api-verify", "api-down",
-        "monitoring-up", "monitoring-verify", "monitoring-down", "failure-drill"
+        "monitoring-up", "monitoring-verify", "monitoring-down", "failure-drill",
+        "airflow-init", "airflow-up", "airflow-test", "airflow-verify", "airflow-down"
     )]
     [string]$Command = "config",
     [Parameter(Position = 1)]
@@ -278,5 +279,9 @@ switch ($Command) {
             & python (Join-Path $RepositoryRoot "scripts/failure_drills.py")
         }
         if ($LASTEXITCODE -ne 0) { throw "Failure drill failed" }
+    }
+    { $_ -in @("airflow-init", "airflow-up", "airflow-test", "airflow-verify", "airflow-down") } {
+        & python (Join-Path $RepositoryRoot "scripts/airflow_workflows.py") $Command
+        if ($LASTEXITCODE -ne 0) { throw "Airflow workflow failed" }
     }
 }

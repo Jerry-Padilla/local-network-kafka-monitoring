@@ -487,6 +487,21 @@ services:
     command: ["version"]
     restart: "no"
 
+  airflow-fixture:
+    profiles: [airflow]
+    build:
+      context: .
+      dockerfile: deployment/airflow/fixture.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+    restart: "no"
+    networks: [backend]
+
   airflow-scheduler:
     <<: *airflow-common
     command: ["scheduler"]

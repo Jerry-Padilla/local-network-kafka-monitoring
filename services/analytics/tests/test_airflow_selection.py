@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 from netpulse_analytics.orchestration.models import DateRange
-from netpulse_analytics.orchestration.selection import select_date_range
+from netpulse_analytics.orchestration.selection import orchestration_run_key, select_date_range
 
 
 def test_scheduled_run_selects_previous_complete_utc_date() -> None:
@@ -25,6 +25,14 @@ def test_manual_override_is_inclusive_and_bounded() -> None:
     )
 
     assert selected.day_count == 31
+
+
+def test_orchestration_run_key_is_stable_for_the_same_logical_window() -> None:
+    selected = DateRange(date(2035, 1, 15), date(2035, 1, 15))
+
+    assert orchestration_run_key("netpulse_daily_reliability", selected) == (
+        "netpulse_daily_reliability:2035-01-15:2035-01-15"
+    )
 
 
 @pytest.mark.parametrize(

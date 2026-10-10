@@ -7,6 +7,12 @@ from datetime import UTC, date, datetime, timedelta
 from netpulse_analytics.orchestration.models import DateRange
 
 
+def orchestration_run_key(dag_id: str, selected: DateRange) -> str:
+    if not dag_id.strip():
+        raise ValueError("DAG id is required for the orchestration run key")
+    return f"{dag_id}:{selected.from_date.isoformat()}:{selected.through_date.isoformat()}"
+
+
 def _parse_date(value: str) -> date:
     try:
         return date.fromisoformat(value)

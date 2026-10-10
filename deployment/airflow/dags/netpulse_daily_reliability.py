@@ -14,7 +14,7 @@ from netpulse_analytics.orchestration.models import DateRange, ReconciliationRes
 from netpulse_analytics.orchestration.notification import send_failure_notification
 from netpulse_analytics.orchestration.quality import assess_source_quality
 from netpulse_analytics.orchestration.repository import PostgresOrchestrationRepository
-from netpulse_analytics.orchestration.selection import select_date_range
+from netpulse_analytics.orchestration.selection import orchestration_run_key, select_date_range
 from netpulse_analytics.repository import PostgresAnalyticsRepository
 
 LOGGER = logging.getLogger(__name__)
@@ -35,14 +35,24 @@ def _selected(payload: dict[str, str]) -> DateRange:
 
 
 def _failure_callback(context: dict[str, Any]) -> None:
-    run_id = str(context.get("run_id", "unknown"))
+    params = context.get("params", {})
+    try:
+        selected = select_date_range(
+            context.get("data_interval_end"),
+            params.get("from_date"),
+            params.get("through_date"),
+            maximum_days=DAG_CONTRACT.maximum_backfill_days,
+        )
+        run_key = orchestration_run_key(DAG_CONTRACT.dag_id, selected)
+    except (AttributeError, TypeError, ValueError):
+        run_key = str(context.get("run_id", "unknown"))
     task_instance = context.get("task_instance")
     task_id = str(getattr(task_instance, "task_id", "unknown"))
     exception = context.get("exception")
     error_type = type(exception).__name__ if exception is not None else "UnknownError"
     try:
         PostgresOrchestrationRepository(_database_url()).record_failure(
-            run_id, task_id, error_type
+            run_key, task_id, error_type
         )
     except Exception:
         LOGGER.exception("failed to record Airflow DAG failure metadata")
@@ -50,7 +60,7 @@ def _failure_callback(context: dict[str, Any]) -> None:
         send_failure_notification(
             os.environ.get("NETPULSE_AIRFLOW_FAILURE_WEBHOOK_URL", ""),
             dag_id=DAG_CONTRACT.dag_id,
-            run_id=run_id,
+            run_id=run_key,
             task_id=task_id,
             error_type=error_type,
         )
@@ -90,6 +100,7 @@ with DAG(
         return {
             "from_date": selected.from_date.isoformat(),
             "through_date": selected.through_date.isoformat(),
+            "run_key": orchestration_run_key(DAG_CONTRACT.dag_id, selected),
         }
 
     @task(
@@ -117,8 +128,7 @@ with DAG(
                 seconds=int(os.environ.get("NETPULSE_AIRFLOW_DELAY_AFTER_SECONDS", "600"))
             ),
         )
-        run_id = str(get_current_context()["run_id"])
-        repository.start_run(run_id, _selected(payload), assessment)
+        repository.start_run(payload["run_key"], _selected(payload), assessment)
         if not assessment.may_refresh:
             raise RuntimeError(f"source quality status is {assessment.status.value}")
         return payload
@@ -172,7 +182,7 @@ with DAG(
     )
     def record_success(state: dict[str, Any]) -> None:
         PostgresOrchestrationRepository(_database_url()).record_success(
-            str(get_current_context()["run_id"]),
+            str(state["run_key"]),
             int(state["analytics_run_id"]),
             ReconciliationResult(**state["reconciliation"]),
         )

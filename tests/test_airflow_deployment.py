@@ -19,6 +19,7 @@ def test_airflow_profile_is_lightweight_isolated_and_loopback_only() -> None:
         "airflow-postgres",
         "airflow-netpulse-init",
         "airflow-init",
+        "airflow-fixture",
         "airflow-scheduler",
         "airflow-dag-processor",
         "airflow-api-server",
@@ -28,6 +29,7 @@ def test_airflow_profile_is_lightweight_isolated_and_loopback_only() -> None:
     assert services["airflow-api-server"]["ports"] == ["127.0.0.1:8080:8080"]
     assert "airflow-worker" not in services
     assert "redis" not in services
+    assert services["airflow-fixture"]["restart"] == "no"
 
 
 def test_airflow_runtime_uses_local_executor_separate_metadata_and_read_only_dags() -> None:
@@ -36,9 +38,7 @@ def test_airflow_runtime_uses_local_executor_separate_metadata_and_read_only_dag
     environment = scheduler["environment"]
 
     assert environment["AIRFLOW__CORE__EXECUTOR"] == "LocalExecutor"
-    assert "@airflow-postgres:5432/airflow" in environment[
-        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"
-    ]
+    assert "@airflow-postgres:5432/airflow" in environment["AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"]
     assert environment["NETPULSE_DATABASE_URL"].startswith("postgresql://netpulse_airflow:")
     assert "POSTGRES_ADMIN_PASSWORD" not in environment
     assert "./deployment/airflow/dags:/opt/airflow/dags:ro" in scheduler["volumes"]
@@ -46,9 +46,7 @@ def test_airflow_runtime_uses_local_executor_separate_metadata_and_read_only_dag
     assert scheduler["depends_on"]["airflow-init"]["condition"] == (
         "service_completed_successfully"
     )
-    assert scheduler["depends_on"]["airflow-api-server"]["condition"] == (
-        "service_healthy"
-    )
+    assert scheduler["depends_on"]["airflow-api-server"]["condition"] == ("service_healthy")
     assert len(environment["AIRFLOW__API_AUTH__JWT_SECRET"]) >= 64
 
 
@@ -84,5 +82,5 @@ def test_example_environment_documents_airflow_security_and_quality_settings() -
 def test_analytics_dependencies_are_compatible_with_airflow_runtime() -> None:
     project = (ROOT / "services/analytics/pyproject.toml").read_text(encoding="utf-8")
 
-    assert '"psycopg[binary]>=3.2.9,<4"' in project
+    assert '"psycopg[binary]>=3.2.6,<4"' in project
     assert '"structlog>=25.2.0,<27"' in project
