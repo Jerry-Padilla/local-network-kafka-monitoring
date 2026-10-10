@@ -103,9 +103,11 @@ window and classifies it as:
 - `invalid`: source processing failures exist for the window;
 - `legitimately_empty`: neither relevant observations nor upstream activity exist.
 
-Only `healthy` and `legitimately_empty` windows may refresh. Empty periods are
-therefore represented without inventing data, while contradictory evidence
-fails the run. Data-quality failures are not retried indefinitely.
+`healthy`, `delayed`, and `legitimately_empty` windows may refresh. Delayed is
+preserved in workflow status as operational evidence, while the event-time
+window can still be rebuilt exactly. Empty periods are represented without
+inventing data. Missing, stale, invalid, and contradictory evidence fail the
+run; data-quality failures are not retried indefinitely.
 
 Reconciliation independently derives daily grains from deduplicated
 `network_measurements` and `service_checks`, then compares counts, successes,
