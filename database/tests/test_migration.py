@@ -201,9 +201,9 @@ def test_airflow_migration_adds_idempotent_run_state_and_read_only_status_view()
 
 
 def test_airflow_login_provisioning_is_explicit_and_least_privileged() -> None:
-    script = (
-        Path(__file__).parents[1] / "init" / "03-create-airflow-analytics-user.sh"
-    ).read_text(encoding="utf-8")
+    script = (Path(__file__).parents[1] / "init" / "03-create-airflow-analytics-user.sh").read_text(
+        encoding="utf-8"
+    )
 
     assert "${AIRFLOW_NETPULSE_DB_PASSWORD:-}" in script
     assert "CREATE ROLE netpulse_airflow LOGIN PASSWORD %L" in script

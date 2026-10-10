@@ -33,12 +33,8 @@ def assess_source_quality(
             snapshot,
             "no upstream activity exists in the requested window",
         )
-    if (
-        snapshot.latest_observation_at is None
-        or (
-            snapshot.latest_heartbeat_at is None
-            and snapshot.heartbeat_count > 0
-        )
+    if snapshot.latest_observation_at is None or (
+        snapshot.latest_heartbeat_at is None and snapshot.heartbeat_count > 0
     ):
         raise ValueError("positive source counts require corresponding timestamps")
     if (

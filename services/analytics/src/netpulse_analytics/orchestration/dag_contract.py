@@ -42,9 +42,7 @@ DAG_CONTRACT = DagContract(
     dag_timeout=timedelta(hours=1),
     maximum_backfill_days=31,
     task_ids=_TASK_IDS,
-    transient_task_retries=MappingProxyType(
-        {"check_postgres": 2, "run_analytics_refresh": 2}
-    ),
+    transient_task_retries=MappingProxyType({"check_postgres": 2, "run_analytics_refresh": 2}),
     task_timeouts=MappingProxyType(
         {
             "resolve_date_range": timedelta(seconds=30),

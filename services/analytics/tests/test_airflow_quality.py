@@ -62,11 +62,14 @@ def test_source_quality_classifies_distinct_operational_states(
     )
 
     assert assessment.status is expected
-    assert assessment.may_refresh is (expected in {
-        SourceStatus.HEALTHY,
-        SourceStatus.DELAYED,
-        SourceStatus.LEGITIMATELY_EMPTY,
-    })
+    assert assessment.may_refresh is (
+        expected
+        in {
+            SourceStatus.HEALTHY,
+            SourceStatus.DELAYED,
+            SourceStatus.LEGITIMATELY_EMPTY,
+        }
+    )
 
 
 def test_source_snapshot_rejects_negative_counts_and_naive_timestamps() -> None:
