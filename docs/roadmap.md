@@ -17,10 +17,14 @@
    reversible failure-drill tooling. Physical Pi acceptance remains the gate.
 6. Completed: the loopback-only, read-only FastAPI daily reliability query
    layer passes live HTTP, privilege, index-plan, and operator checks.
-7. Demonstrate orchestration with Kind and Kustomize.
+7. Completed: optional Apache Airflow LocalExecutor orchestration schedules the
+   existing daily analytics job with source-quality gates, reconciliation,
+   bounded retries/backfills, persisted status, and live two-pass acceptance.
 8. Run physical Pi acceptance and measured performance/failure experiments;
    write capacity conclusions only from captured evidence.
-9. Consider local, citation-bearing RAG and a bounded read-only MCP server only
+9. Consider whether a Kubernetes demonstration adds value after measured local
+   capacity work; do not introduce Kind/Kustomize solely for orchestration.
+10. Consider local, citation-bearing RAG and a bounded read-only MCP server only
    after all core acceptance criteria pass.
 
 Each phase is gated by implementation, tests, reproducible startup, security

@@ -20,11 +20,16 @@
   outbox; and publishes acknowledged probable incident revisions.
 - PostgreSQL retains a JSONB copy of valid input plus typed operational tables.
   Alembic owns schema evolution.
+- Optional Airflow LocalExecutor services coordinate the existing transactional
+  daily analytics refresh, source-quality gate, exact reconciliation, and
+  reporting validation. Airflow has a separate metadata PostgreSQL database
+  and does not control the continuous Kafka/Spark path.
 - Prometheus scrapes bounded service metrics plus Kafka/PostgreSQL exporters;
   Alertmanager routes actionable local alerts; Grafana reads Prometheus and
-  five read-only PostgreSQL views: `v_daily_probe_reliability`,
+  six read-only PostgreSQL views: `v_daily_probe_reliability`,
   `v_incident_summary`, `v_sre_agent_status`, `v_sre_pipeline_status`, and
-  `v_grafana_live_measurements`. Their configured host ports are loopback-only.
+  `v_grafana_live_measurements`, plus `v_analytics_workflow_status`. Their
+  configured host ports are loopback-only.
 
 The network dashboard's four live panels read ingested typed measurements
 through `v_grafana_live_measurements`, using original event time rather than
@@ -77,6 +82,22 @@ sequenceDiagram
     O-->>X: Kafka acknowledgement
     X->>P: mark outbox row published
 ```
+
+Airflow runs a separate daily chain downstream of PostgreSQL:
+
+```mermaid
+flowchart LR
+    P[(Operational PostgreSQL)] --> C[check database]
+    C --> Q[assess source quality]
+    Q --> A[transactional analytics refresh]
+    A --> R[exact reconciliation]
+    R --> V[reporting validation]
+    V --> W[(workflow status view)]
+    W --> G[Grafana]
+```
+
+See [Airflow orchestration](airflow-orchestration.md) for schedule, credentials,
+backfills, failure recovery, and deployment limitations.
 
 If processing fails, the consumer seeks to the same offset and retries with
 bounded exponential backoff and jitter. After the configured attempt limit it

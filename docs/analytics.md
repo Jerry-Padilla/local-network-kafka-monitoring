@@ -66,3 +66,17 @@ the login before a migration downgrade if role dependencies require it.
 
 The default Compose PostgreSQL port is bound to loopback. Remote reporting
 access and a public database listener are outside this local setup.
+
+## Optional Airflow schedule
+
+Airflow can coordinate this same repository code at 02:00 UTC each day. The
+`netpulse_daily_reliability` DAG selects the previous UTC day, classifies source
+quality, runs the transactional refresh, reconciles exact source/fact values,
+validates reporting output, and records status in
+`v_analytics_workflow_status`. It does not duplicate the aggregation logic in
+the DAG and does not replace the direct analytics commands above.
+
+Manual Airflow ranges are inclusive, require both endpoints, and are capped at
+31 days. Rerunning a range safely replaces its daily facts and increments one
+stable orchestration status record. See
+[Airflow orchestration](airflow-orchestration.md) for commands and recovery.

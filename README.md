@@ -24,6 +24,8 @@ flowchart LR
     T -->|event-time windows + invalid evidence| P
     I -->|lifecycle + durable outbox| P
     I -->|probable incident states| N[incidents.v1 topic]
+    P --> AF[Airflow daily analytics and validation]
+    AF --> P
     C --> M[Prometheus]
     T --> M
     I --> M
@@ -61,6 +63,9 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 - An opt-in daily analytics batch that rebuilds exact UTC probe counts and a
   current incident snapshot from deduplicated operational tables, with
   read-only reporting views.
+- Optional Apache Airflow orchestration for the daily analytics refresh,
+  source-quality gates, exact reconciliation, bounded retries/backfills, and
+  persisted workflow status.
 - A loopback-only, read-only daily reliability query API with bounded
   cursor pagination and a dedicated PostgreSQL reporting login.
 - Prometheus recording/alert rules, Alertmanager, three provisioned Grafana
@@ -130,6 +135,10 @@ identifiers.
 | Build analytics job | `make analytics-build` | `./scripts/netpulse.ps1 analytics-build` |
 | Backfill analytics | `make analytics-all` | `./scripts/netpulse.ps1 analytics-all` |
 | Reconcile analytics facts | `make analytics-verify` | `./scripts/netpulse.ps1 analytics-verify` |
+| Start optional Airflow | `make airflow-up` | `./scripts/netpulse.ps1 airflow-up` |
+| Check Airflow DAG imports | `make airflow-test` | `./scripts/netpulse.ps1 airflow-test` |
+| Run live Airflow verification | `make airflow-verify` | `./scripts/netpulse.ps1 airflow-verify` |
+| Stop Airflow, preserve volumes | `make airflow-down` | `./scripts/netpulse.ps1 airflow-down` |
 | Build query API | `make api-build` | `./scripts/netpulse.ps1 api-build` |
 | Start query API | `make api-up` | `./scripts/netpulse.ps1 api-up` |
 | Run query API integration tests | `make api-integration` | `./scripts/netpulse.ps1 api-integration` |
@@ -151,9 +160,10 @@ Alertmanager at port 9093. The illustrative objectives are 99% successful
 ingestion, p95 processing below one second, and freshness below 60 seconds
 while traffic is active; they are portfolio targets, not production SLO claims.
 
-The Grafana login reads five PostgreSQL views through `netpulse_report`:
+The Grafana login reads six PostgreSQL views through `netpulse_report`:
 `v_daily_probe_reliability`, `v_incident_summary`, `v_sre_agent_status`,
-`v_sre_pipeline_status`, and `v_grafana_live_measurements`. It cannot read or
+`v_sre_pipeline_status`, `v_grafana_live_measurements`, and
+`v_analytics_workflow_status`. It cannot read or
 modify operational tables. The network dashboard defaults to the last hour
 and refreshes every ten seconds; daily Probe Success overrides the range to
 30 days. Live Latency, Live Packet Loss, Live Probe Success, and Latest Readings
@@ -223,6 +233,7 @@ incident consumers must deduplicate it.
 - [Spark Structured Streaming](docs/streaming.md)
 - [Incident classification](docs/incident-classification.md)
 - [Daily analytics and reporting](docs/analytics.md)
+- [Airflow orchestration and runbook](docs/airflow-orchestration.md)
 - [Daily reliability query API](docs/query-api.md)
 - [Failure testing](docs/failure-testing.md)
 - [Security and privacy](docs/security.md)

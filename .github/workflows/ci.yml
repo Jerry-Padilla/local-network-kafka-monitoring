@@ -45,9 +45,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose --profile monitoring --profile streaming --profile classification --profile analytics --profile test config --quiet
+      - run: docker compose --profile airflow config --quiet
       - run: docker run --rm -v "$PWD/deployment/observability/prometheus:/etc/prometheus:ro" --entrypoint /bin/promtool prom/prometheus:v3.14.0 check config /etc/prometheus/prometheus.yml
       - run: docker run --rm -v "$PWD/deployment/observability/prometheus:/etc/prometheus:ro" --entrypoint /bin/promtool prom/prometheus:v3.14.0 check rules /etc/prometheus/rules/recording.yml /etc/prometheus/rules/alerts.yml
       - run: docker compose --profile analytics build event-ingestor network-agent simulator stream-processor incident-classifier analytics tests
+      - run: docker compose --profile airflow build airflow-scheduler airflow-fixture
+      - run: >-
+          docker compose --profile airflow run --rm --no-deps airflow-scheduler
+          python -c "from airflow.models import DagBag; bag = DagBag('/opt/airflow/dags'); assert not bag.import_errors, bag.import_errors"
 
   integration:
     runs-on: ubuntu-latest
