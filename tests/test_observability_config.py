@@ -307,7 +307,13 @@ def test_three_dashboards_are_provisioned_with_required_panels_and_datasources()
         ),
         "pipeline-reliability.json": (
             "netpulse-pipeline-reliability",
-            {"Ingestion Throughput", "Consumer Lag", "Ingestion Success Ratio", "p95 Processing"},
+            {
+                "Ingestion Throughput",
+                "Consumer Lag",
+                "Ingestion Success Ratio",
+                "p95 Processing",
+                "Airflow Workflow Status",
+            },
         ),
         "network-reliability.json": (
             "netpulse-network-reliability",
@@ -329,6 +335,7 @@ def test_three_dashboards_are_provisioned_with_required_panels_and_datasources()
         "v_sre_agent_status",
         "v_sre_pipeline_status",
         "v_grafana_live_measurements",
+        "v_analytics_workflow_status",
     }
     for filename, (uid, required_titles) in expectations.items():
         dashboard = json.loads(
@@ -370,6 +377,23 @@ def test_three_dashboards_are_provisioned_with_required_panels_and_datasources()
     assert "date_utc" in network and "success_rate_pct" in network
     assert "start_time" in network
     assert "bucket_date" not in network and "opened_at" not in network
+
+    pipeline_dashboard = json.loads(
+        (OBSERVABILITY / "grafana" / "dashboards" / "pipeline-reliability.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    workflow_panel = next(
+        panel
+        for panel in pipeline_dashboard["panels"]
+        if panel["title"] == "Airflow Workflow Status"
+    )
+    workflow_sql = workflow_panel["targets"][0]["rawSql"].lower()
+    assert workflow_panel["datasource"]["uid"] == "postgres"
+    assert "from v_analytics_workflow_status" in workflow_sql
+    assert "order by started_at desc" in workflow_sql
+    assert "'no_runs' as status" in workflow_sql
+    assert "not exists" in workflow_sql
 
 
 def test_every_alert_runbook_has_operational_sections_and_no_destructive_reset() -> None:
