@@ -51,7 +51,8 @@ def test_airflow_runtime_uses_local_executor_separate_metadata_and_read_only_dag
 
 
 def test_netpulse_login_is_reprovisioned_after_migration_for_existing_volumes() -> None:
-    provision = _compose()["services"]["airflow-netpulse-init"]
+    services = _compose()["services"]
+    provision = services["airflow-netpulse-init"]
 
     assert provision["depends_on"]["migrate"]["condition"] == "service_completed_successfully"
     assert provision["entrypoint"] == [
@@ -62,6 +63,22 @@ def test_netpulse_login_is_reprovisioned_after_migration_for_existing_volumes() 
         "./database/init/03-create-airflow-analytics-user.sh:"
         "/scripts/provision-airflow-analytics-user.sh:ro"
     ) in provision["volumes"]
+
+
+def test_fresh_postgres_bootstrap_defers_airflow_grants_until_after_migration() -> None:
+    services = _compose()["services"]
+    postgres_volumes = services["postgres"]["volumes"]
+
+    expected_bootstrap_mounts = {
+        "./database/init/00-create-app-user.sh:"
+        "/docker-entrypoint-initdb.d/00-create-app-user.sh:ro",
+        "./database/init/01-create-monitoring-users.sh:"
+        "/docker-entrypoint-initdb.d/01-create-monitoring-users.sh:ro",
+        "./database/init/02-create-query-api-user.sh:"
+        "/docker-entrypoint-initdb.d/02-create-query-api-user.sh:ro",
+    }
+    assert expected_bootstrap_mounts <= set(postgres_volumes)
+    assert all("03-create-airflow-analytics-user.sh" not in volume for volume in postgres_volumes)
 
 
 def test_example_environment_documents_airflow_security_and_quality_settings() -> None:

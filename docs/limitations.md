@@ -23,6 +23,8 @@
 - Incident classification uses static deterministic thresholds over a bounded
   database snapshot. It has no learned baseline, seasonality model, or
   definitive access to router/ISP internals.
-- PostgreSQL analytics and read-only SRE views are implemented. Grafana replaces
-  the earlier Power BI idea; an API, Kubernetes, RAG, and MCP remain future work.
+- PostgreSQL analytics, read-only SRE views, the loopback-only query API, and
+  optional Airflow orchestration are implemented. Grafana remains the supported
+  operational dashboard; Kubernetes, RAG, and MCP are outside the completed
+  `master` scope.
 - No throughput, recovery-time, or capacity figures are claimed.
