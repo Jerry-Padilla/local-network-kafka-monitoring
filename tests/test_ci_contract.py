@@ -5,6 +5,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _job_section(workflow: str, job: str, next_job: str | None = None) -> str:
+    section = workflow.split(f"  {job}:\n", maxsplit=1)[1]
+    if next_job is not None:
+        section = section.split(f"  {next_job}:\n", maxsplit=1)[0]
+    return section
+
+
 def test_python313_agent_job_installs_local_observability_package() -> None:
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
@@ -49,28 +56,30 @@ def test_ci_uses_node24_actions_and_a_stable_runner_image() -> None:
 
 def test_ci_lints_github_workflows_and_shell_scripts() -> None:
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    containers = _job_section(workflow, "containers", "integration")
 
-    assert "rhysd/actionlint:1.7.12" in workflow
-    assert "koalaman/shellcheck:v0.11.0" in workflow
+    assert "rhysd/actionlint:1.7.12@sha256:" in containers
+    assert "koalaman/shellcheck:v0.11.0@sha256:" in containers
 
 
 def test_ci_runs_live_airflow_acceptance() -> None:
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    airflow = _job_section(workflow, "airflow-integration", "observability-integration")
 
-    assert "airflow-integration:" in workflow
-    assert "./scripts/netpulse.sh airflow-verify" in workflow
+    assert "./scripts/netpulse.sh airflow-verify" in airflow
 
 
 def test_ci_runs_tableau_export_and_checks_the_published_bundle() -> None:
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    analytics = _job_section(workflow, "analytics-integration", "query-api-integration")
 
-    assert "./scripts/netpulse.sh tableau-export" in workflow
-    assert "scripts/verify_tableau_export.py tableau_exports" in workflow
+    assert "./scripts/netpulse.sh tableau-export" in analytics
+    assert "scripts/verify_tableau_export.py tableau_exports" in analytics
 
 
 def test_ci_runs_live_observability_acceptance() -> None:
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    observability = _job_section(workflow, "observability-integration")
 
-    assert "observability-integration:" in workflow
-    assert "./scripts/netpulse.sh monitoring-up" in workflow
-    assert "./scripts/netpulse.sh monitoring-verify" in workflow
+    assert "./scripts/netpulse.sh monitoring-up" in observability
+    assert "./scripts/netpulse.sh monitoring-verify" in observability

@@ -46,9 +46,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
-      - run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12
       - run: >-
-          docker run --rm -v "$PWD:/repo" -w /repo koalaman/shellcheck:v0.11.0
+          docker run --rm -v "$PWD:/repo" -w /repo
+          rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+      - run: >-
+          docker run --rm -v "$PWD:/repo" -w /repo
+          koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
           database/init/00-create-app-user.sh
           database/init/01-create-monitoring-users.sh
           database/init/02-create-query-api-user.sh

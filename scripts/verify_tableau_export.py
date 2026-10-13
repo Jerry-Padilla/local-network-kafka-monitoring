@@ -85,7 +85,18 @@ def verify_export(output_dir: Path) -> dict[str, int]:
             header = tuple(next(reader, ()))
             if header != EXPECTED_HEADERS[filename]:
                 raise ValueError(f"{filename} has an unexpected header")
-            row_counts[filename] = sum(1 for _ in reader)
+            row_count = 0
+            for row_number, row in enumerate(reader, start=2):
+                if len(row) != len(header):
+                    raise ValueError(
+                        f"{filename} row {row_number} has {len(row)} columns; "
+                        f"expected {len(header)}"
+                    )
+                row_count += 1
+            row_counts[filename] = row_count
+    for filename in ("daily_reliability.csv", "agent_performance.csv"):
+        if row_counts[filename] < 1:
+            raise ValueError(f"{filename} must contain at least one seeded analytics row")
     if row_counts["pipeline_health.csv"] != 1:
         raise ValueError("pipeline_health.csv must contain exactly one snapshot row")
     return row_counts
