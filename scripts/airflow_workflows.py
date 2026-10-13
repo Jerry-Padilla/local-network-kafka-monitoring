@@ -111,10 +111,15 @@ def verify(*, run: Run = _run) -> None:
         {"from_date": VERIFICATION_DATE, "through_date": VERIFICATION_DATE},
         separators=(",", ":"),
     )
+    # ``dags test`` writes task instances to the shared metadata database. A
+    # live scheduler can claim those instances concurrently, so isolate the
+    # deterministic test runner after the scheduled-run smoke check completes.
+    run([*AIRFLOW, "stop", "airflow-scheduler"])
     dag_test = [
         *AIRFLOW,
-        "exec",
-        "-T",
+        "run",
+        "--rm",
+        "--no-deps",
         "airflow-scheduler",
         "airflow",
         "dags",
@@ -129,8 +134,9 @@ def verify(*, run: Run = _run) -> None:
     run(
         [
             *AIRFLOW,
-            "exec",
-            "-T",
+            "run",
+            "--rm",
+            "--no-deps",
             "airflow-scheduler",
             "python",
             "/opt/netpulse/scripts/verify_airflow.py",

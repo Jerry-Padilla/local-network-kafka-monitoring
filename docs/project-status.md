@@ -39,8 +39,10 @@ The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
 the documented containerized suite works from both a normal checkout and a
 linked Windows worktree. CI now pre-creates the Tableau bind-mount target so
-the unprivileged exporter owns it, and Airflow verification separates its
-historical logical date from the fixed synthetic-data window.
+the unprivileged exporter owns it. Airflow verification separates its
+historical logical date from the fixed synthetic-data window and stops the live
+scheduler before running deterministic DAG tests against the shared metadata
+database.
 
 Live acceptance used an isolated Compose project with matched fresh Kafka and
 PostgreSQL volumes. Grafana 13.2.2 was healthy on `127.0.0.1:3000`, and all

@@ -109,6 +109,20 @@ def test_airflow_verify_uses_fixed_simulator_window_and_reruns_same_dag() -> Non
     assert dag_tests[0] == dag_tests[1]
     assert workflows.VERIFICATION_LOGICAL_DATE in dag_tests[0]
     assert workflows.VERIFICATION_LOGICAL_DATE == "2026-01-02T02:00:00Z"
+    scheduler_stop = next(
+        index
+        for index, command in enumerate(recorder.commands)
+        if command[-2:] == ("stop", "airflow-scheduler")
+    )
+    first_dag_test = recorder.commands.index(dag_tests[0])
+    assert scheduler_stop < first_dag_test
+    assert dag_tests[0][-11:-6] == (
+        "run",
+        "--rm",
+        "--no-deps",
+        "airflow-scheduler",
+        "airflow",
+    )
     wait = next(
         command
         for command in recorder.commands
@@ -116,6 +130,7 @@ def test_airflow_verify_uses_fixed_simulator_window_and_reruns_same_dag() -> Non
     )
     assert wait[-4:] == ("--date", workflows.VERIFICATION_DATE, "--timeout", "60")
     verifier = recorder.commands[-1]
+    assert verifier[-11:-7] == ("run", "--rm", "--no-deps", "airflow-scheduler")
     assert verifier[-6:] == (
         "/opt/netpulse/scripts/verify_airflow.py",
         "--from-date",
