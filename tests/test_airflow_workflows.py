@@ -108,6 +108,7 @@ def test_airflow_verify_uses_fixed_simulator_window_and_reruns_same_dag() -> Non
     assert len(dag_tests) == 2
     assert dag_tests[0] == dag_tests[1]
     assert workflows.VERIFICATION_LOGICAL_DATE in dag_tests[0]
+    assert workflows.VERIFICATION_LOGICAL_DATE == "2026-01-02T02:00:00Z"
     wait = next(
         command
         for command in recorder.commands

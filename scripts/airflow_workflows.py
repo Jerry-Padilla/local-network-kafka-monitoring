@@ -13,7 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ["docker", "compose", "-f", str(ROOT / "docker-compose.yml")]
 AIRFLOW = [*COMPOSE, "--profile", "airflow"]
 VERIFICATION_DATE = "2035-01-15"
-VERIFICATION_LOGICAL_DATE = "2035-01-16T02:00:00Z"
+# Keep the DAG run inside its valid historical schedule. The fixture's data
+# window is intentionally independent and remains fixed for repeatable checks.
+VERIFICATION_LOGICAL_DATE = "2026-01-02T02:00:00Z"
 Run = Callable[..., CompletedProcess[str]]
 
 

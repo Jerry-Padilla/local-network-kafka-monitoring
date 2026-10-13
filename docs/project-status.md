@@ -1,8 +1,8 @@
 # Project status
 
 - **Last audited:** October 13, 2026
-- **Checkout:** integrated `master`
-- **Tagged release base:** `v1.0.0` at `e64292f`; current `master` at `97cbafc`
+- **Checkout:** CI-hardening candidate based on `master`
+- **Tagged release base:** `v1.0.0` at `e64292f`; current work extends that release
 
 ## Summary
 
@@ -22,7 +22,7 @@ present in this checkout.
 | Compose rendering | `docker compose config --quiet` | Passed |
 | Lint | `./scripts/netpulse.ps1 lint` | Passed |
 | Strict typing | `./scripts/netpulse.ps1 typecheck` | Passed; 87 source files |
-| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 492 tests, 13 deselected; 88.31% coverage |
+| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 503 tests, 13 deselected; 88.31% coverage |
 | Live integration tests | `./scripts/netpulse.ps1 test-integration` | Passed; 6 tests, 448 deselected |
 | Ingestion invariants | `./scripts/netpulse.ps1 verify` | Passed; 67 raw events, 31 typed measurements, 0 duplicate IDs |
 | Spark streaming | `./scripts/netpulse.ps1 stream-verify` | Passed; 56 curated windows, 6 expected invalid records, 0 duplicate aggregate keys |
@@ -32,11 +32,15 @@ present in this checkout.
 | Query API smoke check | `./scripts/netpulse.ps1 api-verify` | Passed; health and cursor pagination |
 | Observability plane | host HTTP/API and SQL checks | Passed; 7 targets, 0 required down, 2 healthy rule groups, 3 SRE agents |
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
+| GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Pending final post-fix matrix run |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
 the documented containerized suite works from both a normal checkout and a
-linked Windows worktree.
+linked Windows worktree. CI now pre-creates the Tableau bind-mount target so
+the unprivileged exporter owns it, and Airflow verification separates its
+historical logical date from the fixed synthetic-data window.
 
 Live acceptance used an isolated Compose project with matched fresh Kafka and
 PostgreSQL volumes. Grafana 13.2.2 was healthy on `127.0.0.1:3000`, and all
@@ -61,8 +65,7 @@ depends on a separately installed host Python interpreter.
 
 ## Open acceptance gates
 
-- Run the reversible failure drills and integrated live Airflow/Tableau
-  acceptance together on the merged `master` branch.
+- Run the reversible failure drills on the target deployment.
 - Install and exercise the agent on the target Raspberry Pi 3 B+, including
   outage recovery, reboot persistence, metrics, and dashboard visibility.
 - Build, privacy-review, and publish the Tableau Public workbook; no public URL
@@ -76,7 +79,8 @@ depends on a separately installed host Python interpreter.
 
 | Branch | Relative state | Capability | Integration status |
 |---|---|---|---|
-| `master` | Synchronized with `origin/master` at `97cbafc` | Airflow orchestration plus Tableau CSV export and guide | Integrated and pushed |
+| `codex/ci-hardening` | Ahead of `origin/master` pending final CI | Airflow orchestration, Tableau CSV export, and live GitHub acceptance | Candidate under validation |
+| `master` | Synchronized with `origin/master` before this CI batch | Airflow orchestration plus Tableau CSV export and guide | Current integration target |
 | `codex/sre-observability` | Diverged from `v1.0.0` | Kind/Kustomize deployment and acceptance tooling | Separate local branch |
 
 Branch state describes the local repository at audit time and may change as
