@@ -18,6 +18,16 @@ from netpulse_simulator.scenarios import SCENARIOS, ScenarioGenerator, Simulated
 LOGGER = structlog.get_logger()
 
 
+def _utc_datetime(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("start time must be an ISO-8601 timestamp") from error
+    if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
+        raise argparse.ArgumentTypeError("start time must be timezone-aware UTC")
+    return parsed.astimezone(UTC)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="NetPulse deterministic telemetry simulator")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -27,6 +37,11 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--duration", type=int, default=60, help="duration in seconds")
     run.add_argument("--rate", type=float, default=1.0, help="rounds per second")
     run.add_argument("--seed", type=int)
+    run.add_argument(
+        "--start-time",
+        type=_utc_datetime,
+        help="fixed UTC timestamp for the first generated round",
+    )
     run.add_argument("--dry-run", action="store_true", help="print records without Kafka")
 
     load = subparsers.add_parser("load-test", help="publish at a target event rate")
@@ -48,7 +63,7 @@ def _run_scenario(args: argparse.Namespace, config: SimulatorConfig) -> int:
         raise ValueError("duration and rate must be positive")
     generator = ScenarioGenerator(seed=args.seed if args.seed is not None else config.seed)
     publisher = None if args.dry_run else KafkaPublisher(config)
-    started = datetime.now(UTC)
+    started = args.start_time if args.start_time is not None else datetime.now(UTC)
     deadline = time.monotonic() + args.duration
     interval = 1 / args.rate
     rounds = 0

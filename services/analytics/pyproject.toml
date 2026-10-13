@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Transactional dimensional analytics refresh for NetPulse"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "psycopg[binary]==3.2.6",
-  "structlog==25.2.0",
+  "psycopg[binary]>=3.2.6,<4",
+  "structlog>=25.2.0,<27",
 ]
 
 [project.scripts]

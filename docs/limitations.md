@@ -27,10 +27,9 @@
 - Incident classification uses static deterministic thresholds over a bounded
   database snapshot. It has no learned baseline, seasonality model, or
   definitive access to router/ISP internals.
-- PostgreSQL analytics, read-only SRE views, Grafana, and the loopback-only
-  query API are implemented. Tableau support exports CSV datasets only; the
-  repository does not contain or publish a Tableau workbook.
-- Airflow orchestration and Kind/Kustomize implementations are maintained on
-  separate, unmerged branches and are not available in this checkout.
-- RAG and MCP remain future work.
+- PostgreSQL analytics, read-only SRE views, the loopback-only query API, and
+  optional Airflow orchestration are implemented. Grafana remains the supported
+  operational dashboard. Tableau support exports CSV datasets only; the
+  repository does not contain or publish a Tableau workbook. Kubernetes, RAG,
+  and MCP are outside the completed `master` scope.
 - No throughput, recovery-time, or capacity figures are claimed.

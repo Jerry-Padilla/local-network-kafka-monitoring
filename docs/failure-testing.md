@@ -75,3 +75,20 @@ stop/start, malformed traffic, and a traffic pause. Dependency restoration is
 in a `finally` block and no drill deletes volumes. It records UTC timestamps
 and the observed Prometheus alert state. A drill result proves only that exact
 run; retain its output with the environment and component versions.
+
+## Airflow recovery checks
+
+Use `make airflow-verify` or `./scripts/netpulse.ps1 airflow-verify` for the
+repeatable orchestration acceptance path. It inserts deterministic synthetic
+records through the real persistence layer, waits until the requested source
+window is queryable, runs the same logical date twice, and requires non-empty
+facts, zero reconciliation mismatches, and a shared status row with at least
+two attempts. It preserves Kafka offsets, Spark checkpoints, and existing
+PostgreSQL volumes.
+
+To exercise dependency recovery manually, stop PostgreSQL during
+`check_postgres`, observe its bounded retries and failed task state, restore the
+database, and rerun the same date range. For stale, missing, invalid, analytics,
+or reconciliation failures, diagnose the evidence before rerunning; do not
+delete source events or reset volumes. Detailed procedures are in the
+[Airflow runbook](airflow-orchestration.md#failure-runbook).

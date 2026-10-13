@@ -20,11 +20,14 @@
 7. Software complete: validated, privacy-reduced Tableau CSV exports are
    generated and promoted atomically. Manual workbook construction, final
    privacy review, and Tableau Public publication remain.
-8. Reconcile and integrate the separately developed Airflow orchestration and
-   Kind/Kustomize branches. Neither capability is part of this checkout.
+8. Completed: optional Apache Airflow LocalExecutor orchestration schedules the
+   existing daily analytics job with source-quality gates, reconciliation,
+   bounded retries/backfills, persisted status, and live two-pass acceptance.
 9. Run physical Pi acceptance and measured performance/failure experiments;
    write capacity conclusions only from captured evidence.
-10. Consider local, citation-bearing RAG and a bounded read-only MCP server only
+10. Consider whether a Kubernetes demonstration adds value after measured local
+   capacity work; do not introduce Kind/Kustomize solely for orchestration.
+11. Consider local, citation-bearing RAG and a bounded read-only MCP server only
    after all core acceptance criteria pass.
 
 Each phase is gated by implementation, tests, reproducible startup, security

@@ -1,20 +1,19 @@
 # Project status
 
 - **Last audited:** October 13, 2026
-- **Checkout:** `feature/tableau-bi-dashboard`
+- **Checkout:** integrated `master` candidate
 - **Release base:** `v1.0.0` / `origin/master` at `e64292f`
 
 ## Summary
 
 This checkout contains the released NetPulse ingestion, Pi-agent, streaming,
 incident-classification, analytics, query-API, and SRE-observability paths plus
-the optional Tableau CSV export. It is a local portfolio prototype, not a
-production service or a completed hardware deployment.
+optional Airflow orchestration and Tableau CSV export. It is a local portfolio
+prototype, not a production service or a completed hardware deployment.
 
-The branch is 11 commits ahead of `origin/master`. Its Tableau implementation
-has not been merged into the release branch. Airflow orchestration and
-Kind/Kustomize work are on separate divergent branches and are not present in
-this checkout.
+The local integration combines the previously separate Airflow and Tableau
+branches. Kind/Kustomize work remains on a separate divergent branch and is not
+present in this checkout.
 
 ## Verified in this audit
 
@@ -22,8 +21,8 @@ this checkout.
 |---|---|---|
 | Compose rendering | `docker compose config --quiet` | Passed |
 | Lint | `./scripts/netpulse.ps1 lint` | Passed |
-| Strict typing | `./scripts/netpulse.ps1 typecheck` | Passed; 80 source files |
-| Non-integration tests | `./scripts/netpulse.ps1 test-unit` | Passed; 442 tests, 13 deselected |
+| Strict typing | `./scripts/netpulse.ps1 typecheck` | Passed; 87 source files |
+| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 488 tests, 13 deselected; 87.53% coverage |
 | Live integration tests | `./scripts/netpulse.ps1 test-integration` | Passed; 6 tests, 448 deselected |
 | Ingestion invariants | `./scripts/netpulse.ps1 verify` | Passed; 67 raw events, 31 typed measurements, 0 duplicate IDs |
 | Spark streaming | `./scripts/netpulse.ps1 stream-verify` | Passed; 56 curated windows, 6 expected invalid records, 0 duplicate aggregate keys |
@@ -55,19 +54,21 @@ depends on a separately installed host Python interpreter.
   incident publication.
 - Rerunnable daily analytics, read-only reporting views, a loopback-only query
   API, Prometheus, Alertmanager, Grafana dashboards, and operational runbooks.
+- Optional Airflow LocalExecutor orchestration with source-quality gates,
+  reconciliation, bounded retries/backfills, and persisted workflow status.
 - Validated, privacy-reduced Tableau CSV exports with atomic promotion and a
   documented synthetic-data workbook workflow.
 
 ## Open acceptance gates
 
-- Run the reversible failure drills and repeat the acceptance suite after the
-  divergent feature branches are integrated.
+- Run the reversible failure drills and integrated live Airflow/Tableau
+  acceptance together on the merged `master` branch.
 - Install and exercise the agent on the target Raspberry Pi 3 B+, including
   outage recovery, reboot persistence, metrics, and dashboard visibility.
 - Build, privacy-review, and publish the Tableau Public workbook; no public URL
   is currently claimed.
-- Reconcile the Tableau, Airflow, and Kind/Kustomize branches before presenting
-  them as one combined system.
+- Reconcile the remaining Kind/Kustomize branch before presenting it as part of
+  the combined system.
 - Capture evidence before making throughput, recovery-time, capacity, or
   production-readiness claims.
 
@@ -75,9 +76,8 @@ depends on a separately installed host Python interpreter.
 
 | Branch | Relative state | Capability | Integration status |
 |---|---|---|---|
-| `feature/tableau-bi-dashboard` | 11 commits ahead of `origin/master` | Tableau CSV export and guide | Current checkout; unmerged |
-| `master` | 12 commits ahead of `origin/master` | Airflow orchestration | Separate local branch |
+| `master` | Ahead of `origin/master` | Airflow orchestration plus Tableau CSV export and guide | Integrated locally |
 | `codex/sre-observability` | Diverged from `v1.0.0` | Kind/Kustomize deployment and acceptance tooling | Separate local branch |
 
-Branch counts describe the local repository at audit time and may change as
-work is merged or rebased.
+Branch state describes the local repository at audit time and may change as
+work is pushed or rebased.

@@ -24,6 +24,8 @@ flowchart LR
     T -->|event-time windows + invalid evidence| P
     I -->|lifecycle + durable outbox| P
     I -->|probable incident states| N[incidents.v1 topic]
+    P --> AF[Airflow daily analytics and validation]
+    AF --> P
     C --> M[Prometheus]
     T --> M
     I --> M
@@ -40,15 +42,15 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 
 ## Current project status
 
-The software path in this checkout is implemented through the optional Tableau
-CSV export. Compose, lint, strict type checks, unit tests, and the live ingestion,
-streaming, classification, analytics, API, monitoring, and Tableau-export paths
-were revalidated on October 13, 2026. Physical Pi acceptance, a published
-Tableau Public workbook, measured capacity results, and final branch
-reconciliation remain open.
+The software path in this checkout includes optional Airflow orchestration and
+the optional Tableau CSV export. Compose, lint, strict type checks, unit tests,
+and the live ingestion, streaming, classification, analytics, API, monitoring,
+and Tableau-export paths were revalidated on October 13, 2026. Physical Pi
+acceptance, a published Tableau Public workbook, measured capacity results, and
+Kind/Kustomize integration remain open.
 
-Airflow orchestration and Kind/Kustomize work exist on separate, unmerged
-branches and are not capabilities of this checkout. See the
+Kind/Kustomize work exists on a separate, unmerged branch and is not a
+capability of this checkout. See the
 [current project status](docs/project-status.md) for exact verification evidence,
 branch state, and remaining gates.
 
@@ -79,6 +81,9 @@ branch state, and remaining gates.
   read-only reporting views.
 - An optional, atomic Tableau export that validates and publishes
   privacy-reduced CSV snapshots from the read-only reporting views.
+- Optional Apache Airflow orchestration for the daily analytics refresh,
+  source-quality gates, exact reconciliation, bounded retries/backfills, and
+  persisted workflow status.
 - A loopback-only, read-only daily reliability query API with bounded
   cursor pagination and a dedicated PostgreSQL reporting login.
 - Prometheus recording/alert rules, Alertmanager, three provisioned Grafana
@@ -151,6 +156,10 @@ identifiers.
 | Backfill analytics | `make analytics-all` | `./scripts/netpulse.ps1 analytics-all` |
 | Reconcile analytics facts | `make analytics-verify` | `./scripts/netpulse.ps1 analytics-verify` |
 | Export Tableau datasets | `make tableau-export` | `./scripts/netpulse.ps1 tableau-export` |
+| Start optional Airflow | `make airflow-up` | `./scripts/netpulse.ps1 airflow-up` |
+| Check Airflow DAG imports | `make airflow-test` | `./scripts/netpulse.ps1 airflow-test` |
+| Run live Airflow verification | `make airflow-verify` | `./scripts/netpulse.ps1 airflow-verify` |
+| Stop Airflow, preserve volumes | `make airflow-down` | `./scripts/netpulse.ps1 airflow-down` |
 | Build query API | `make api-build` | `./scripts/netpulse.ps1 api-build` |
 | Start query API | `make api-up` | `./scripts/netpulse.ps1 api-up` |
 | Run query API integration tests | `make api-integration` | `./scripts/netpulse.ps1 api-integration` |
@@ -174,9 +183,10 @@ at `http://127.0.0.1:3000`; Prometheus is at port 9090 and Alertmanager at port
 ingestion, p95 processing below one second, and freshness below 60 seconds
 while traffic is active; they are portfolio targets, not production SLO claims.
 
-The Grafana login reads five PostgreSQL views through `netpulse_report`:
+The Grafana login reads six PostgreSQL views through `netpulse_report`:
 `v_daily_probe_reliability`, `v_incident_summary`, `v_sre_agent_status`,
-`v_sre_pipeline_status`, and `v_grafana_live_measurements`. It cannot read or
+`v_sre_pipeline_status`, `v_grafana_live_measurements`, and
+`v_analytics_workflow_status`. It cannot read or
 modify operational tables. The network dashboard defaults to the last hour
 and refreshes every ten seconds; daily Probe Success overrides the range to
 30 days. Live Latency, Live Packet Loss, Live Probe Success, and Latest Readings
@@ -267,6 +277,7 @@ incident consumers must deduplicate it.
 - [Incident classification](docs/incident-classification.md)
 - [Daily analytics and reporting](docs/analytics.md)
 - [Tableau Public dashboard](docs/tableau-dashboard.md)
+- [Airflow orchestration and runbook](docs/airflow-orchestration.md)
 - [Daily reliability query API](docs/query-api.md)
 - [Failure testing](docs/failure-testing.md)
 - [Security and privacy](docs/security.md)
@@ -300,6 +311,9 @@ incident consumers must deduplicate it.
   candidate-to-resolved incident lifecycle published through Kafka.
 - Added validated, privacy-reduced Tableau CSV exports with atomic promotion
   and a documented synthetic-data workbook workflow.
+- Added optional Airflow LocalExecutor orchestration with source-quality gates,
+  exact reconciliation, bounded retries/backfills, and workflow status in
+  Grafana.
 
 Only capabilities supported by the completion reports are claimed here;
 physical Raspberry Pi validation remains outstanding.

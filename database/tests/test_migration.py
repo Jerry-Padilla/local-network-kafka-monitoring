@@ -185,3 +185,30 @@ def test_query_api_user_provisioning_limits_login_to_daily_view() -> None:
     assert "GRANT netpulse_app TO netpulse_query_api" not in script
     assert "GRANT netpulse_monitor TO netpulse_query_api" not in script
     assert "${PGHOST:-}" in script
+
+
+def test_airflow_migration_adds_idempotent_run_state_and_read_only_status_view() -> None:
+    migration = (
+        Path(__file__).parents[1] / "migrations" / "versions" / "0009_airflow_orchestration.py"
+    ).read_text(encoding="utf-8")
+
+    assert "CREATE TABLE analytics_orchestration_runs" in migration
+    assert "run_key TEXT PRIMARY KEY" in migration
+    assert "attempt_count INTEGER NOT NULL" in migration
+    assert "CREATE VIEW v_analytics_workflow_status" in migration
+    assert "GRANT SELECT ON v_analytics_workflow_status TO netpulse_report" in migration
+    assert "DROP TABLE IF EXISTS analytics_orchestration_runs" in migration
+
+
+def test_airflow_login_provisioning_is_explicit_and_least_privileged() -> None:
+    script = (Path(__file__).parents[1] / "init" / "03-create-airflow-analytics-user.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "${AIRFLOW_NETPULSE_DB_PASSWORD:-}" in script
+    assert "CREATE ROLE netpulse_airflow LOGIN PASSWORD %L" in script
+    assert "ALTER ROLE netpulse_airflow LOGIN NOSUPERUSER" in script
+    assert "GRANT netpulse_app TO netpulse_airflow" not in script
+    assert "GRANT SELECT ON public.network_measurements" in script
+    assert "GRANT SELECT, INSERT, UPDATE, DELETE ON public.fact_reliability_daily" in script
+    assert "GRANT USAGE, SELECT ON SEQUENCE public.analytics_job_runs_run_id_seq" in script

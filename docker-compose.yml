@@ -1,5 +1,29 @@
 name: netpulse
 
+x-airflow-common: &airflow-common
+  profiles: [airflow]
+  build:
+    context: .
+    dockerfile: deployment/airflow/Dockerfile
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: ${AIRFLOW_ADMIN_USERNAME:-admin}:admin
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg://airflow:${AIRFLOW_METADATA_DB_PASSWORD:-change-me-local-airflow-metadata}@airflow-postgres:5432/airflow
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_API_JWT_SECRET:-change-me-local-airflow-jwt-secret-at-least-64-bytes-long-0123456789abcdef}
+    NETPULSE_DATABASE_URL: postgresql://netpulse_airflow:${AIRFLOW_NETPULSE_DB_PASSWORD:-change-me-local-airflow-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+    NETPULSE_AIRFLOW_STALE_AFTER_SECONDS: ${NETPULSE_AIRFLOW_STALE_AFTER_SECONDS:-900}
+    NETPULSE_AIRFLOW_DELAY_AFTER_SECONDS: ${NETPULSE_AIRFLOW_DELAY_AFTER_SECONDS:-600}
+    NETPULSE_AIRFLOW_FAILURE_WEBHOOK_URL: ${NETPULSE_AIRFLOW_FAILURE_WEBHOOK_URL:-}
+  user: "${AIRFLOW_UID:-50000}:0"
+  volumes:
+    - ./deployment/airflow/dags:/opt/airflow/dags:ro
+    - airflow-logs:/opt/airflow/logs
+  restart: unless-stopped
+  networks: [backend]
+
 services:
   postgres:
     image: postgres:17.10-bookworm
@@ -11,11 +35,14 @@ services:
       GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD:-change-me-local-grafana}
       POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:-change-me-local-exporter}
       QUERY_API_POSTGRES_PASSWORD: ${QUERY_API_POSTGRES_PASSWORD:-change-me-local-query-api}
+      AIRFLOW_NETPULSE_DB_PASSWORD: ${AIRFLOW_NETPULSE_DB_PASSWORD:-change-me-local-airflow-app}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./database/init/00-create-app-user.sh:/docker-entrypoint-initdb.d/00-create-app-user.sh:ro
+      - ./database/init/01-create-monitoring-users.sh:/docker-entrypoint-initdb.d/01-create-monitoring-users.sh:ro
+      - ./database/init/02-create-query-api-user.sh:/docker-entrypoint-initdb.d/02-create-query-api-user.sh:ro
     healthcheck:
       test:
         [
@@ -413,6 +440,115 @@ services:
     restart: unless-stopped
     networks: [backend]
 
+  airflow-postgres:
+    profiles: [airflow]
+    image: postgres:17.10-bookworm
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${AIRFLOW_METADATA_DB_PASSWORD:-change-me-local-airflow-metadata}
+    volumes:
+      - airflow-metadata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [backend]
+
+  airflow-netpulse-init:
+    profiles: [airflow]
+    image: postgres:17.10-bookworm
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-netpulse_admin}
+      POSTGRES_DB: ${POSTGRES_DB:-netpulse}
+      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}
+      PGHOST: postgres
+      AIRFLOW_NETPULSE_DB_PASSWORD: ${AIRFLOW_NETPULSE_DB_PASSWORD:-change-me-local-airflow-app}
+    volumes:
+      - ./database/init/03-create-airflow-analytics-user.sh:/scripts/provision-airflow-analytics-user.sh:ro
+    entrypoint: ["bash", "/scripts/provision-airflow-analytics-user.sh"]
+    restart: "no"
+    networks: [backend]
+
+  airflow-init:
+    <<: *airflow-common
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-netpulse-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: "true"
+    command: ["version"]
+    restart: "no"
+
+  airflow-fixture:
+    profiles: [airflow]
+    build:
+      context: .
+      dockerfile: deployment/airflow/fixture.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
+    restart: "no"
+    networks: [backend]
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: ["scheduler"]
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      airflow-api-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$${HOSTNAME}\""]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: ["dag-processor"]
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname \"$${HOSTNAME}\""]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  airflow-api-server:
+    <<: *airflow-common
+    command: ["api-server"]
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
   tests:
     profiles: [test]
     build:
@@ -440,6 +576,8 @@ networks:
 
 volumes:
   agent-outbox:
+  airflow-logs:
+  airflow-metadata:
   alertmanager-data:
   grafana-data:
   kafka-data:
