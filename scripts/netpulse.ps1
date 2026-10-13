@@ -252,12 +252,14 @@ switch ($Command) {
         Invoke-DockerCompose @("--profile", "analytics", "build", "analytics")
     }
     "analytics-all" {
+        New-Item -ItemType Directory -Force -Path (Join-Path $RepositoryRoot "tableau_exports") | Out-Null
         Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
         Invoke-DockerCompose @("--profile", "analytics", "build", "migrate", "analytics")
         Invoke-DockerCompose @("run", "--rm", "migrate")
         Invoke-DockerCompose @("--profile", "analytics", "run", "--rm", "analytics", "--all")
     }
     "analytics-verify" {
+        New-Item -ItemType Directory -Force -Path (Join-Path $RepositoryRoot "tableau_exports") | Out-Null
         Invoke-DockerCompose @("up", "-d", "--wait", "postgres")
         Invoke-DockerCompose @("--profile", "analytics", "--profile", "test", "build", "migrate", "analytics", "tests")
         Invoke-DockerCompose @("run", "--rm", "migrate")

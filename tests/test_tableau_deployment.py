@@ -33,3 +33,26 @@ def test_tableau_export_promotion_does_not_require_host_python() -> None:
     assert "Promote-TableauExport $OutputDirectory" in powershell_wrapper
     host_python_call = '& python (Join-Path $RepositoryRoot "scripts/promote_tableau_export.py")'
     assert host_python_call not in powershell_wrapper
+
+
+def test_analytics_commands_create_tableau_bind_mount_before_docker_runs() -> None:
+    bash = (ROOT / "scripts" / "netpulse.sh").read_text(encoding="utf-8")
+    powershell = (ROOT / "scripts" / "netpulse.ps1").read_text(encoding="utf-8")
+
+    for command, next_command in (
+        ("analytics-all", "analytics-verify"),
+        ("analytics-verify", "tableau-export"),
+    ):
+        bash_block = bash.split(f"  {command})", maxsplit=1)[1].split(
+            f"  {next_command})", maxsplit=1
+        )[0]
+        assert bash_block.index('mkdir -p "$repository_root/tableau_exports"') < bash_block.index(
+            '"${compose[@]}"'
+        )
+
+        powershell_block = powershell.split(f'    "{command}" {{', maxsplit=1)[1].split(
+            f'    "{next_command}" {{', maxsplit=1
+        )[0]
+        assert powershell_block.index("New-Item -ItemType Directory") < powershell_block.index(
+            "Invoke-DockerCompose"
+        )

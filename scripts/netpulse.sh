@@ -136,12 +136,14 @@ case "$command" in
     "${compose[@]}" --profile analytics build analytics
     ;;
   analytics-all)
+    mkdir -p "$repository_root/tableau_exports"
     "${compose[@]}" up -d --wait postgres
     "${compose[@]}" --profile analytics build migrate analytics
     "${compose[@]}" run --rm migrate
     "${compose[@]}" --profile analytics run --rm analytics --all
     ;;
   analytics-verify)
+    mkdir -p "$repository_root/tableau_exports"
     "${compose[@]}" up -d --wait postgres
     "${compose[@]}" --profile analytics --profile test build migrate analytics tests
     "${compose[@]}" run --rm migrate
