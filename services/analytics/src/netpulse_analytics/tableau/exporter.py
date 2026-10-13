@@ -73,9 +73,7 @@ def _swap_directories(staging_dir: Path, output_dir: Path) -> None:
 def publish_export(bundle: ExportBundle, output_dir: Path) -> None:
     _validate_bundle(bundle)
     output = _validate_output_path(output_dir)
-    staging_dir = Path(
-        tempfile.mkdtemp(dir=output.parent, prefix=f".{output.name}.staging.")
-    )
+    staging_dir = Path(tempfile.mkdtemp(dir=output.parent, prefix=f".{output.name}.staging."))
     try:
         _write_staging(bundle, staging_dir)
         _swap_directories(staging_dir, output)

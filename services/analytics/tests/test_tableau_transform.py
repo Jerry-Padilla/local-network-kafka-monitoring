@@ -182,9 +182,9 @@ def test_incidents_have_exact_columns_utc_timestamps_and_stable_order() -> None:
         end_time=datetime(2026, 10, 8, 1, 0, 1, 500000, tzinfo=UTC),
     )
 
-    dataset = build_export_bundle(
-        TableauSnapshot(incidents=(later, earlier))
-    ).datasets["incidents.csv"]
+    dataset = build_export_bundle(TableauSnapshot(incidents=(later, earlier))).datasets[
+        "incidents.csv"
+    ]
 
     assert dataset.columns == (
         "incident_id",
@@ -211,9 +211,9 @@ def test_incidents_have_exact_columns_utc_timestamps_and_stable_order() -> None:
 
 
 def test_pipeline_health_has_exact_columns_and_utc_timestamps() -> None:
-    dataset = build_export_bundle(
-        TableauSnapshot(pipeline_health=_pipeline())
-    ).datasets["pipeline_health.csv"]
+    dataset = build_export_bundle(TableauSnapshot(pipeline_health=_pipeline())).datasets[
+        "pipeline_health.csv"
+    ]
 
     assert dataset.columns == (
         "observed_at_utc",
@@ -243,9 +243,11 @@ def test_non_utc_aware_timestamp_is_converted_to_utc() -> None:
     plus_two = timezone(timedelta(hours=2))
     incident = _incident(start_time=datetime(2026, 10, 8, 3, tzinfo=plus_two))
 
-    row = build_export_bundle(TableauSnapshot(incidents=(incident,))).datasets[
-        "incidents.csv"
-    ].rows[0]
+    row = (
+        build_export_bundle(TableauSnapshot(incidents=(incident,)))
+        .datasets["incidents.csv"]
+        .rows[0]
+    )
 
     assert row[2] == "2026-10-08T01:00:00Z"
 

@@ -16,6 +16,7 @@ case "$command" in
     "${compose[@]}" build
     ;;
   lint)
+    "${compose[@]}" --profile test run --rm --entrypoint ruff tests format --check .
     "${compose[@]}" --profile test run --rm --entrypoint ruff tests check .
     ;;
   format)

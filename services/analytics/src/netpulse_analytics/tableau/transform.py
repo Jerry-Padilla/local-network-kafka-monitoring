@@ -86,9 +86,9 @@ def _ratio(numerator: float, denominator: int, multiplier: float = 1.0) -> float
 def _daily_groups(
     rows: Iterable[DailyReliabilitySource],
 ) -> dict[tuple[date, str, str | None, str, str], list[DailyReliabilitySource]]:
-    groups: dict[
-        tuple[date, str, str | None, str, str], list[DailyReliabilitySource]
-    ] = defaultdict(list)
+    groups: dict[tuple[date, str, str | None, str, str], list[DailyReliabilitySource]] = (
+        defaultdict(list)
+    )
     for row in rows:
         key = (
             row.date_utc,
@@ -133,9 +133,7 @@ def _daily_dataset(rows: tuple[DailyReliabilitySource, ...]) -> CsvDataset:
 
 
 def _agent_dataset(rows: tuple[DailyReliabilitySource, ...]) -> CsvDataset:
-    groups: dict[tuple[str, str | None, str, str], list[DailyReliabilitySource]] = (
-        defaultdict(list)
-    )
+    groups: dict[tuple[str, str | None, str, str], list[DailyReliabilitySource]] = defaultdict(list)
     for row in rows:
         groups[
             (

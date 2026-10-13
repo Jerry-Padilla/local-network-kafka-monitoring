@@ -42,10 +42,7 @@ def test_publish_export_writes_exact_headers_utf8_lf_and_empty_null_fields(
     publish_export(_bundle(), output_dir)
 
     daily = _read_exact(output_dir / "daily_reliability.csv")
-    assert daily == (
-        "date_utc,total_probes,average_latency_ms\n"
-        "2026-10-08,10,\n"
-    )
+    assert daily == ("date_utc,total_probes,average_latency_ms\n2026-10-08,10,\n")
     assert b"\r\n" not in (output_dir / "daily_reliability.csv").read_bytes()
 
 

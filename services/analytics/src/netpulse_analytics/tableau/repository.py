@@ -25,12 +25,10 @@ class PostgresTableauRepository:
             psycopg.connect(self._database_url) as connection,
             connection.transaction(),
         ):
-            connection.execute(
-                "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
-            )
+            connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
             connection.execute("SET LOCAL TIME ZONE 'UTC'")
             daily_rows = connection.execute(
-                    """SELECT
+                """SELECT
                            d.date_utc,
                            d.agent_id,
                            a.agent_role,
@@ -49,7 +47,7 @@ class PostgresTableauRepository:
                                 d.endpoint_id"""
             ).fetchall()
             incident_rows = connection.execute(
-                    """SELECT
+                """SELECT
                            incident_id,
                            incident_type,
                            start_time,
@@ -66,7 +64,7 @@ class PostgresTableauRepository:
                        ORDER BY start_time, incident_id"""
             ).fetchall()
             pipeline_rows = connection.execute(
-                    """SELECT
+                """SELECT
                            observed_at,
                            last_raw_event_received_at,
                            raw_event_age_seconds,
@@ -82,9 +80,7 @@ class PostgresTableauRepository:
         return TableauSnapshot(
             daily_reliability=tuple(self._daily_row(row) for row in daily_rows),
             incidents=tuple(self._incident_row(row) for row in incident_rows),
-            pipeline_health=(
-                self._pipeline_row(pipeline_rows[0]) if pipeline_rows else None
-            ),
+            pipeline_health=(self._pipeline_row(pipeline_rows[0]) if pipeline_rows else None),
         )
 
     @staticmethod

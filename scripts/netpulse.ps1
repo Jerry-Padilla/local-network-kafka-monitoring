@@ -100,6 +100,7 @@ switch ($Command) {
         Invoke-DockerCompose @("build")
     }
     "lint" {
+        Invoke-DockerCompose @("--profile", "test", "run", "--rm", "--entrypoint", "ruff", "tests", "format", "--check", ".")
         Invoke-DockerCompose @("--profile", "test", "run", "--rm", "--entrypoint", "ruff", "tests", "check", ".")
     }
     "format" {

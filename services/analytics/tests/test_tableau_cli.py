@@ -49,9 +49,7 @@ def test_cli_reports_successful_row_counts_without_sensitive_configuration(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     secret = "sentinel-password"
-    monkeypatch.setenv(
-        "NETPULSE_DATABASE_URL", f"postgresql://reader:{secret}@localhost/netpulse"
-    )
+    monkeypatch.setenv("NETPULSE_DATABASE_URL", f"postgresql://reader:{secret}@localhost/netpulse")
     monkeypatch.setattr(
         cli,
         "export_tableau",
@@ -96,9 +94,7 @@ def test_database_failure_returns_nonzero_preserves_prior_export_and_redacts_url
     marker = output_dir / "valid.csv"
     marker.write_bytes(b"previous\n")
     secret = "sentinel-password"
-    monkeypatch.setenv(
-        "NETPULSE_DATABASE_URL", f"postgresql://reader:{secret}@localhost/netpulse"
-    )
+    monkeypatch.setenv("NETPULSE_DATABASE_URL", f"postgresql://reader:{secret}@localhost/netpulse")
 
     def fail(_config: TableauExportConfig) -> ExportSummary:
         raise psycopg.OperationalError(f"could not connect using {secret}")
