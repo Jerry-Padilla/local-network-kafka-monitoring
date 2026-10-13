@@ -1,8 +1,8 @@
 # Project status
 
 - **Last audited:** October 13, 2026
-- **Checkout:** integrated `master` candidate
-- **Release base:** `v1.0.0` / `origin/master` at `e64292f`
+- **Checkout:** integrated `master`
+- **Tagged release base:** `v1.0.0` at `e64292f`; current `master` at `97cbafc`
 
 ## Summary
 
@@ -76,7 +76,7 @@ depends on a separately installed host Python interpreter.
 
 | Branch | Relative state | Capability | Integration status |
 |---|---|---|---|
-| `master` | Ahead of `origin/master` | Airflow orchestration plus Tableau CSV export and guide | Integrated locally |
+| `master` | Synchronized with `origin/master` at `97cbafc` | Airflow orchestration plus Tableau CSV export and guide | Integrated and pushed |
 | `codex/sre-observability` | Diverged from `v1.0.0` | Kind/Kustomize deployment and acceptance tooling | Separate local branch |
 
 Branch state describes the local repository at audit time and may change as
