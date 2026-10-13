@@ -23,3 +23,15 @@ def test_local_lint_wrappers_include_ci_format_check() -> None:
 
     assert '"format", "--check", "."' in powershell_lint
     assert "ruff tests format --check ." in posix_lint
+
+
+def test_quality_job_invokes_pytest_as_a_python_module() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    assert 'python -m pytest -m "not integration" --cov --cov-report=xml' in workflow
+
+
+def test_python313_agent_job_excludes_cross_service_schema_test() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    assert "--ignore=packages/contracts/tests/test_json_schemas.py" in workflow

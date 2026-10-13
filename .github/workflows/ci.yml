@@ -17,7 +17,9 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install pytest==8.3.5 ./packages/contracts ./packages/observability ./services/network-agent
       - run: python -m pip check
-      - run: python -m pytest packages/contracts/tests services/network-agent/tests -q
+      - run: >-
+          python -m pytest packages/contracts/tests services/network-agent/tests -q
+          --ignore=packages/contracts/tests/test_json_schemas.py
 
   quality:
     runs-on: ubuntu-latest
@@ -35,7 +37,7 @@ jobs:
       - run: ruff format --check .
       - run: ruff check .
       - run: mypy
-      - run: pytest -m "not integration" --cov --cov-report=xml
+      - run: python -m pytest -m "not integration" --cov --cov-report=xml
       - run: pytest tests/test_observability_config.py tests/test_observability_scripts.py -q
       - run: bash deployment/pi/tests/preflight_test.sh
       - run: alembic -c database/alembic.ini upgrade head --sql > /tmp/netpulse-migration.sql
