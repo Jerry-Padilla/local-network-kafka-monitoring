@@ -13,9 +13,11 @@ from netpulse_agent.config import (
     OutboxConfig,
 )
 from netpulse_agent.events import EventFactory
+from netpulse_agent.metrics import AgentMetrics
 from netpulse_agent.outbox import SQLiteOutbox
 from netpulse_agent.publisher import OutboxPublisher
 from netpulse_contracts.models import AgentRole
+from prometheus_client import CollectorRegistry
 
 pytestmark = pytest.mark.integration
 
@@ -57,6 +59,7 @@ def test_agent_retains_event_offline_then_delivers_original_event(tmp_path) -> N
         )
     )
     assert outbox.enqueue(event)
+    metrics = AgentMetrics(CollectorRegistry())
 
     offline = OutboxPublisher(
         KafkaConfig(
@@ -64,6 +67,7 @@ def test_agent_retains_event_offline_then_delivers_original_event(tmp_path) -> N
             delivery_timeout_seconds=0.5,
         ),
         outbox,
+        metrics,
     )
     assert offline.publish_ready() == (0, 1)
     offline.close()
@@ -77,6 +81,7 @@ def test_agent_retains_event_offline_then_delivers_original_event(tmp_path) -> N
             delivery_timeout_seconds=5,
         ),
         outbox,
+        metrics,
     )
     assert online.publish_ready() == (1, 0)
     online.close()

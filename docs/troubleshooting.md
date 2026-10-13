@@ -33,6 +33,23 @@ Inspect `docker compose logs kafka`. Confirm port 29092 is unused and that the
 Kafka volume is writable. A cluster-ID or storage-format mismatch in disposable
 demo data can be cleared with `reset`.
 
+## Grafana does not open on localhost:3000
+
+The core `up` command does not start the optional monitoring profile. Run
+`./scripts/netpulse.ps1 monitoring-up` on Windows or `make monitoring-up` on
+POSIX, then confirm `docker compose --profile monitoring ps grafana` reports
+healthy. Grafana binds only to `127.0.0.1:3000`; use that address from the Docker
+host. If the port is already allocated, identify the exact container or process
+that owns it before stopping anything.
+
+## New events are all reported as duplicates after reusing volumes
+
+Compare Kafka end offsets with the maximum stored `source_offset` for each
+topic and partition. This usually means the Kafka volume was recreated while an
+older PostgreSQL volume was retained. Preserve any needed data, then restore a
+matched Kafka/PostgreSQL backup or reset both disposable volumes together. Do
+not weaken the deduplication constraint to hide the mismatch.
+
 ## Migration fails because a role is missing
 
 The application role is created only when PostgreSQL initializes an empty data

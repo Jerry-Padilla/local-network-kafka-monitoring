@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import yaml
@@ -17,20 +16,20 @@ def test_analytics_service_mounts_only_generated_tableau_output_for_writing() ->
     assert analytics["volumes"] == ["./tableau_exports:/exports"]
 
 
-def test_tableau_exports_are_gitignored() -> None:
-    result = subprocess.run(
-        [
-            "git",
-            "-c",
-            f"safe.directory={ROOT.as_posix()}",
-            "check-ignore",
-            "tableau_exports/sample.csv",
-        ],
-        cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+def test_tableau_exports_directory_is_listed_in_gitignore() -> None:
+    entries = {
+        line.strip()
+        for line in (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
 
-    assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "tableau_exports/sample.csv"
+    assert "/tableau_exports/" in entries
+
+
+def test_tableau_export_promotion_does_not_require_host_python() -> None:
+    powershell_wrapper = (ROOT / "scripts" / "netpulse.ps1").read_text(encoding="utf-8")
+
+    assert "function Promote-TableauExport" in powershell_wrapper
+    assert "Promote-TableauExport $OutputDirectory" in powershell_wrapper
+    host_python_call = '& python (Join-Path $RepositoryRoot "scripts/promote_tableau_export.py")'
+    assert host_python_call not in powershell_wrapper

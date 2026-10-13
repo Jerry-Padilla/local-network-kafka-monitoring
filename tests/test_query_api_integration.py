@@ -296,6 +296,11 @@ def test_daily_order_query_uses_api_index_without_sort(
     admin_url = os.environ["NETPULSE_ADMIN_DATABASE_URL"]
     with _connect_safely(admin_url) as connection:
         connection.execute("SET enable_seqscan = off")
+        # The acceptance fixture is intentionally tiny, so PostgreSQL can prefer a
+        # bitmap scan plus sort even though the API-order index supports the query
+        # directly. Disable bitmap scans for this capability gate so the plan tests
+        # the index's ordering rather than the fixture's artificial row count.
+        connection.execute("SET enable_bitmapscan = off")
         for where, params in (("", ()), ("WHERE date_utc >= %s AND date_utc <= %s", (day, day))):
             plan = connection.execute(
                 "EXPLAIN (FORMAT JSON) SELECT date_utc, agent_id, endpoint_id, "

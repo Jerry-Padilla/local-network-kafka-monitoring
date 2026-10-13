@@ -30,11 +30,27 @@ flowchart LR
     A --> M
     M --> G[Grafana OSS]
     P -->|read-only SRE views| G
+    P -->|privacy-reduced reporting views| E[Tableau CSV export]
+    E --> TB[Tableau Public workbook]
     M --> L[Alertmanager]
 ```
 
 This is a small local test bed for data-engineering concepts, not an ISP-grade
 monitor, a production-scale benchmark, or definitive root-cause detection.
+
+## Current project status
+
+The software path in this checkout is implemented through the optional Tableau
+CSV export. Compose, lint, strict type checks, unit tests, and the live ingestion,
+streaming, classification, analytics, API, monitoring, and Tableau-export paths
+were revalidated on October 13, 2026. Physical Pi acceptance, a published
+Tableau Public workbook, measured capacity results, and final branch
+reconciliation remain open.
+
+Airflow orchestration and Kind/Kustomize work exist on separate, unmerged
+branches and are not capabilities of this checkout. See the
+[current project status](docs/project-status.md) for exact verification evidence,
+branch state, and remaining gates.
 
 ## What works
 
@@ -61,6 +77,8 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 - An opt-in daily analytics batch that rebuilds exact UTC probe counts and a
   current incident snapshot from deduplicated operational tables, with
   read-only reporting views.
+- An optional, atomic Tableau export that validates and publishes
+  privacy-reduced CSV snapshots from the read-only reporting views.
 - A loopback-only, read-only daily reliability query API with bounded
   cursor pagination and a dedicated PostgreSQL reporting login.
 - Prometheus recording/alert rules, Alertmanager, three provisioned Grafana
@@ -69,8 +87,8 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 
 The Raspberry Pi 3 B+ wired collector is mandatory. Its software and bootstrap
 path are implemented, but physical installation, outage recovery, metrics, and
-dashboard acceptance have not yet been executed. Pi Zero models,
-Kubernetes, and measured capacity results remain outside the completed scope.
+dashboard acceptance have not yet been executed. Pi Zero models and measured
+capacity results remain outside the completed scope.
 
 ## Quick start
 
@@ -88,6 +106,7 @@ Copy-Item .env.example .env
 ./scripts/netpulse.ps1 up
 ./scripts/netpulse.ps1 demo
 ./scripts/netpulse.ps1 verify
+./scripts/netpulse.ps1 monitoring-up
 ```
 
 POSIX shell:
@@ -98,6 +117,7 @@ cp .env.example .env
 ./scripts/netpulse.sh up
 ./scripts/netpulse.sh demo
 ./scripts/netpulse.sh verify
+./scripts/netpulse.sh monitoring-up
 ```
 
 Change both passwords in `.env` before using the stack on a shared machine.
@@ -130,6 +150,7 @@ identifiers.
 | Build analytics job | `make analytics-build` | `./scripts/netpulse.ps1 analytics-build` |
 | Backfill analytics | `make analytics-all` | `./scripts/netpulse.ps1 analytics-all` |
 | Reconcile analytics facts | `make analytics-verify` | `./scripts/netpulse.ps1 analytics-verify` |
+| Export Tableau datasets | `make tableau-export` | `./scripts/netpulse.ps1 tableau-export` |
 | Build query API | `make api-build` | `./scripts/netpulse.ps1 api-build` |
 | Start query API | `make api-up` | `./scripts/netpulse.ps1 api-up` |
 | Run query API integration tests | `make api-integration` | `./scripts/netpulse.ps1 api-integration` |
@@ -146,8 +167,10 @@ identifiers.
 `reset` additionally deletes the named Kafka and PostgreSQL volumes and is
 therefore destructive to local demo data.
 
-Grafana is at `http://127.0.0.1:3000`, Prometheus at port 9090, and
-Alertmanager at port 9093. The illustrative objectives are 99% successful
+`up` starts the core data path only. Run `monitoring-up` before opening Grafana
+at `http://127.0.0.1:3000`; Prometheus is at port 9090 and Alertmanager at port
+9093. With the example environment, Grafana uses `admin` and the value of
+`GRAFANA_ADMIN_PASSWORD`. The illustrative objectives are 99% successful
 ingestion, p95 processing below one second, and freshness below 60 seconds
 while traffic is active; they are portfolio targets, not production SLO claims.
 
@@ -183,7 +206,8 @@ See the [Tableau dashboard guide](docs/tableau-dashboard.md) for the dataset
 schemas, synthetic demo workflow, workbook design, and public-data privacy
 warning.
 
-**Tableau Public workbook:** `<add URL after publication>`
+Publication status: no Tableau Public workbook has been published, so the
+project does not claim a public workbook URL yet.
 
 Tableau is not required for the core NetPulse application, Grafana dashboards,
 or any ingestion, streaming, classification, API, or monitoring workflow.
@@ -233,6 +257,7 @@ incident consumers must deduplicate it.
 
 ## Documentation
 
+- [Current project status](docs/project-status.md)
 - [Architecture](docs/architecture.md)
 - [Data contracts](docs/data-contracts.md)
 - [Local deployment](docs/deployment.md)
@@ -273,6 +298,8 @@ incident consumers must deduplicate it.
   replay-safe PostgreSQL upserts.
 - Implemented evidence-bearing deterministic correlation and a replay-safe
   candidate-to-resolved incident lifecycle published through Kafka.
+- Added validated, privacy-reduced Tableau CSV exports with atomic promotion
+  and a documented synthetic-data workbook workflow.
 
 Only capabilities supported by the completion reports are claimed here;
 physical Raspberry Pi validation remains outstanding.

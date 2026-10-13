@@ -17,10 +17,14 @@
    reversible failure-drill tooling. Physical Pi acceptance remains the gate.
 6. Completed: the loopback-only, read-only FastAPI daily reliability query
    layer passes live HTTP, privilege, index-plan, and operator checks.
-7. Demonstrate orchestration with Kind and Kustomize.
-8. Run physical Pi acceptance and measured performance/failure experiments;
+7. Software complete: validated, privacy-reduced Tableau CSV exports are
+   generated and promoted atomically. Manual workbook construction, final
+   privacy review, and Tableau Public publication remain.
+8. Reconcile and integrate the separately developed Airflow orchestration and
+   Kind/Kustomize branches. Neither capability is part of this checkout.
+9. Run physical Pi acceptance and measured performance/failure experiments;
    write capacity conclusions only from captured evidence.
-9. Consider local, citation-bearing RAG and a bounded read-only MCP server only
+10. Consider local, citation-bearing RAG and a bounded read-only MCP server only
    after all core acceptance criteria pass.
 
 Each phase is gated by implementation, tests, reproducible startup, security

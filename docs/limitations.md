@@ -5,6 +5,10 @@
   multi-host, or hardware-agent validation.
 - One Kafka broker and one PostgreSQL instance provide no high availability.
 - Kafka uses plaintext local listeners and development credentials.
+- Kafka and PostgreSQL persistent state must be backed up, restored, or reset
+  together. If Kafka offsets rewind while PostgreSQL is retained, replay-safe
+  source-coordinate deduplication can classify new low offsets as historical
+  duplicates until the broker advances beyond the stored offsets.
 - There is no atomic Kafka/PostgreSQL transaction; output records can repeat.
 - The simulator is evidence-generating test software, not real network
   measurement hardware, and has no durable local queue.
@@ -23,6 +27,10 @@
 - Incident classification uses static deterministic thresholds over a bounded
   database snapshot. It has no learned baseline, seasonality model, or
   definitive access to router/ISP internals.
-- PostgreSQL analytics and read-only SRE views are implemented. Grafana replaces
-  the earlier Power BI idea; an API, Kubernetes, RAG, and MCP remain future work.
+- PostgreSQL analytics, read-only SRE views, Grafana, and the loopback-only
+  query API are implemented. Tableau support exports CSV datasets only; the
+  repository does not contain or publish a Tableau workbook.
+- Airflow orchestration and Kind/Kustomize implementations are maintained on
+  separate, unmerged branches and are not available in this checkout.
+- RAG and MCP remain future work.
 - No throughput, recovery-time, or capacity figures are claimed.

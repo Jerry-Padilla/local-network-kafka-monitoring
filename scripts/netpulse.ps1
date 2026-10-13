@@ -30,6 +30,62 @@ function Invoke-DockerCompose {
     }
 }
 
+function Promote-TableauExport {
+    param([string]$OutputDirectory)
+
+    $Output = [System.IO.Path]::GetFullPath($OutputDirectory)
+    $Staged = Join-Path $Output ".next"
+    $Expected = @(
+        "agent_performance.csv",
+        "daily_reliability.csv",
+        "incidents.csv",
+        "pipeline_health.csv"
+    )
+    if (-not (Test-Path -LiteralPath $Staged -PathType Container)) {
+        throw "staged Tableau export must be a real directory"
+    }
+    $StagedItem = Get-Item -LiteralPath $Staged -Force
+    if ($StagedItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+        throw "staged Tableau export must not be a symbolic link"
+    }
+    $Files = @(Get-ChildItem -LiteralPath $Staged -Force)
+    $Actual = @($Files.Name | Sort-Object)
+    if (Compare-Object ($Expected | Sort-Object) $Actual) {
+        throw "staged Tableau export must contain exactly four expected CSV files"
+    }
+    if ($Files | Where-Object {
+            $_.PSIsContainer -or
+            ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint)
+        }) {
+        throw "staged Tableau export must contain regular CSV files"
+    }
+
+    $Parent = Split-Path -Parent $Output
+    $Token = [System.Guid]::NewGuid().ToString("N")
+    $Incoming = Join-Path $Parent (".{0}.incoming.{1}" -f (Split-Path -Leaf $Output), $Token)
+    $Backup = Join-Path $Parent (".{0}.backup.{1}" -f (Split-Path -Leaf $Output), $Token)
+    [System.IO.Directory]::Move($Staged, $Incoming)
+    $MovedPrevious = $false
+    try {
+        [System.IO.Directory]::Move($Output, $Backup)
+        $MovedPrevious = $true
+        try {
+            [System.IO.Directory]::Move($Incoming, $Output)
+        } catch {
+            [System.IO.Directory]::Move($Backup, $Output)
+            $MovedPrevious = $false
+            throw
+        }
+    } finally {
+        if (Test-Path -LiteralPath $Incoming) {
+            Remove-Item -LiteralPath $Incoming -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        if ($MovedPrevious -and (Test-Path -LiteralPath $Backup)) {
+            Remove-Item -LiteralPath $Backup -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     throw "Docker CLI was not found. Install Docker Desktop and ensure 'docker' is on PATH."
 }
@@ -220,8 +276,7 @@ switch ($Command) {
             "--entrypoint", "netpulse-tableau-export", "analytics",
             "--output-dir", "/exports/.next"
         )
-        & python (Join-Path $RepositoryRoot "scripts/promote_tableau_export.py") $OutputDirectory
-        if ($LASTEXITCODE -ne 0) { throw "Tableau export promotion failed" }
+        Promote-TableauExport $OutputDirectory
     }
     "api-build" {
         Invoke-DockerCompose @("--profile", "api", "build", "migrate", "query-api")

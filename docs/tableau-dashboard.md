@@ -203,7 +203,7 @@ Anyone may be able to download or inspect the underlying data.
 5. Establish only the valid relationships described above.
 6. Create the calculated fields, worksheets, and four dashboard views.
 7. Publish the workbook to Tableau Public after a final privacy review.
-8. Replace the README workbook placeholder with the public workbook URL.
+8. Add the public workbook URL to the README only after publication succeeds.
 
 Before step 7, confirm that the files contain no private IP addresses, source
 agent identifiers, endpoint or target identifiers, SSIDs, BSSIDs, display names,
