@@ -33,7 +33,7 @@ present in this checkout.
 | Observability plane | host HTTP/API and SQL checks | Passed; 7 targets, 0 required down, 2 healthy rule groups, 3 SRE agents |
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
 | GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
-| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed on merged `master`; [CI run 38592665496](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38592665496) |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for code-bearing `master` commit `00ae154`; [CI run 38596444196](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38596444196) |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
@@ -83,7 +83,7 @@ depends on a separately installed host Python interpreter.
 
 | Branch | Relative state | Capability | Integration status |
 |---|---|---|---|
-| `master` | Includes CI-hardening change set validated at `72ba240` | Airflow orchestration, Tableau CSV export, and live GitHub acceptance | Integrated and pushed |
+| `master` | Current integrated line; CI hardening and isolated container bytecode caches included | Airflow orchestration, Tableau CSV export, and live GitHub acceptance | Integrated and pushed |
 | `codex/sre-observability` | Diverged from `v1.0.0` | Kind/Kustomize deployment and acceptance tooling | Separate local branch |
 
 Branch state describes the local repository at audit time and may change as
