@@ -1,7 +1,7 @@
 # Project status
 
-- **Last audited:** October 13, 2026
-- **Checkout:** CI-hardening candidate based on `master`
+- **Last audited:** October 14, 2026
+- **Checkout:** integrated `master`
 - **Tagged release base:** `v1.0.0` at `e64292f`; current work extends that release
 
 ## Summary
@@ -33,7 +33,7 @@ present in this checkout.
 | Observability plane | host HTTP/API and SQL checks | Passed; 7 targets, 0 required down, 2 healthy rule groups, 3 SRE agents |
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
 | GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
-| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Pending final post-fix matrix run |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed on `72ba240`; [CI run 38479477779](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38479477779) |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
@@ -81,8 +81,7 @@ depends on a separately installed host Python interpreter.
 
 | Branch | Relative state | Capability | Integration status |
 |---|---|---|---|
-| `codex/ci-hardening` | Ahead of `origin/master` pending final CI | Airflow orchestration, Tableau CSV export, and live GitHub acceptance | Candidate under validation |
-| `master` | Synchronized with `origin/master` before this CI batch | Airflow orchestration plus Tableau CSV export and guide | Current integration target |
+| `master` | Includes CI-hardening change set validated at `72ba240` | Airflow orchestration, Tableau CSV export, and live GitHub acceptance | Integrated and pushed |
 | `codex/sre-observability` | Diverged from `v1.0.0` | Kind/Kustomize deployment and acceptance tooling | Separate local branch |
 
 Branch state describes the local repository at audit time and may change as
