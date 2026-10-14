@@ -556,6 +556,7 @@ services:
       dockerfile: tests/Dockerfile
     entrypoint: ["python", "scripts/query_api_test_entrypoint.py"]
     environment:
+      PYTHONPYCACHEPREFIX: /tmp/netpulse-pycache
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       NETPULSE_DATABASE_URL: postgresql://netpulse_app:${POSTGRES_APP_PASSWORD:-change-me-local-app}@postgres:5432/${POSTGRES_DB:-netpulse}
       NETPULSE_ADMIN_DATABASE_URL: postgresql://netpulse_admin:${POSTGRES_ADMIN_PASSWORD:-change-me-local-admin}@postgres:5432/${POSTGRES_DB:-netpulse}

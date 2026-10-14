@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -83,3 +85,11 @@ def test_ci_runs_live_observability_acceptance() -> None:
 
     assert "./scripts/netpulse.sh monitoring-up" in observability
     assert "./scripts/netpulse.sh monitoring-verify" in observability
+
+
+def test_container_tests_isolate_bytecode_from_host_caches() -> None:
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+
+    assert compose["services"]["tests"]["environment"]["PYTHONPYCACHEPREFIX"] == (
+        "/tmp/netpulse-pycache"
+    )

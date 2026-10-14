@@ -22,7 +22,7 @@ present in this checkout.
 | Compose rendering | `docker compose config --quiet` | Passed |
 | Lint | `./scripts/netpulse.ps1 lint` | Passed |
 | Strict typing | `./scripts/netpulse.ps1 typecheck` | Passed; 87 source files |
-| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 503 tests, 13 deselected; 87.53% coverage |
+| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 504 tests, 13 deselected; 88.31% coverage |
 | Live integration tests | `./scripts/netpulse.ps1 test-integration` | Passed; 6 tests, 448 deselected |
 | Ingestion invariants | `./scripts/netpulse.ps1 verify` | Passed; 67 raw events, 31 typed measurements, 0 duplicate IDs |
 | Spark streaming | `./scripts/netpulse.ps1 stream-verify` | Passed; 56 curated windows, 6 expected invalid records, 0 duplicate aggregate keys |
@@ -33,7 +33,7 @@ present in this checkout.
 | Observability plane | host HTTP/API and SQL checks | Passed; 7 targets, 0 required down, 2 healthy rule groups, 3 SRE agents |
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
 | GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
-| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed on `72ba240`; [CI run 38479477779](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38479477779) |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed on merged `master`; [CI run 38592665496](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38592665496) |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
@@ -43,6 +43,8 @@ the unprivileged exporter owns it. Airflow verification separates its
 historical logical date from the fixed synthetic-data window and stops the live
 scheduler before running deterministic DAG tests against the shared metadata
 database.
+The test container also uses an isolated Linux bytecode-cache directory, so
+host-generated Windows bytecode cannot distort container coverage paths.
 
 Live acceptance used an isolated Compose project with matched fresh Kafka and
 PostgreSQL volumes. Grafana 13.2.2 was healthy on `127.0.0.1:3000`, and all
