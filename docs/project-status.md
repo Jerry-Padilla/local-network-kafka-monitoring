@@ -22,7 +22,7 @@ present in this checkout.
 | Compose rendering | `docker compose config --quiet` | Passed |
 | Lint | `./scripts/netpulse.ps1 lint` | Passed |
 | Strict typing | `./scripts/netpulse.ps1 typecheck` | Passed; 87 source files |
-| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 504 tests, 13 deselected; 88.31% coverage |
+| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 506 tests, 13 deselected; 88.31% coverage |
 | Live integration tests | `./scripts/netpulse.ps1 test-integration` | Passed; 6 tests, 448 deselected |
 | Ingestion invariants | `./scripts/netpulse.ps1 verify` | Passed; 67 raw events, 31 typed measurements, 0 duplicate IDs |
 | Spark streaming | `./scripts/netpulse.ps1 stream-verify` | Passed; 56 curated windows, 6 expected invalid records, 0 duplicate aggregate keys |
@@ -33,7 +33,8 @@ present in this checkout.
 | Observability plane | host HTTP/API and SQL checks | Passed; 7 targets, 0 required down, 2 healthy rule groups, 3 SRE agents |
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
 | GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
-| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for code-bearing `master` commit `00ae154`; [CI run 38596444196](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38596444196) |
+| GitHub security configuration | `tests/test_github_security_config.py` plus pinned `actionlint` | Passed locally; CodeQL v4 scans Python and Dependabot covers Python manifests plus GitHub Actions |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for `master` commit `1c9e8ae`; all 10 jobs succeeded in [CI run 38598040659](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38598040659) |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
@@ -66,6 +67,8 @@ depends on a separately installed host Python interpreter.
   reconciliation, bounded retries/backfills, and persisted workflow status.
 - Validated, privacy-reduced Tableau CSV exports with atomic promotion and a
   documented synthetic-data workbook workflow.
+- GitHub CodeQL analysis for Python and weekly Dependabot update checks for the
+  monorepo's Python and GitHub Actions dependencies.
 
 ## Open acceptance gates
 
@@ -83,7 +86,7 @@ depends on a separately installed host Python interpreter.
 
 | Branch | Relative state | Capability | Integration status |
 |---|---|---|---|
-| `master` | Current integrated line; CI hardening and isolated container bytecode caches included | Airflow orchestration, Tableau CSV export, and live GitHub acceptance | Integrated and pushed |
+| `master` | Current integrated line; CI hardening and isolated container bytecode caches included | Airflow orchestration, Tableau CSV export, live GitHub acceptance, CodeQL, and Dependabot | Integrated and pushed |
 | `codex/sre-observability` | Diverged from `v1.0.0` | Kind/Kustomize deployment and acceptance tooling | Separate local branch |
 
 Branch state describes the local repository at audit time and may change as
