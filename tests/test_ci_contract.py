@@ -47,12 +47,21 @@ def test_python313_agent_job_excludes_cross_service_schema_test() -> None:
 
 
 def test_ci_uses_node24_actions_and_a_stable_runner_image() -> None:
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    workflow_path = ROOT / ".github" / "workflows" / "ci.yml"
+    workflow = workflow_path.read_text(encoding="utf-8")
+    document = yaml.load(workflow, Loader=yaml.BaseLoader)
+    action_refs = [
+        step["uses"] for job in document["jobs"].values() for step in job["steps"] if "uses" in step
+    ]
 
     assert "runs-on: ubuntu-latest" not in workflow
     assert "runs-on: ubuntu-24.04" in workflow
-    assert "actions/checkout@v5" in workflow
-    assert "actions/setup-python@v6" in workflow
+    assert {ref for ref in action_refs if ref.startswith("actions/checkout@")} == {
+        "actions/checkout@v7"
+    }
+    assert {ref for ref in action_refs if ref.startswith("actions/setup-python@")} == {
+        "actions/setup-python@v7"
+    }
     assert "actions/setup-java@v5" in workflow
 
 
