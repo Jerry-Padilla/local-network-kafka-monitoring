@@ -47,8 +47,10 @@ the optional Tableau CSV export. Compose, lint, strict type checks, unit tests,
 and the live ingestion, streaming, classification, analytics, API, monitoring,
 Airflow orchestration, and Tableau-export paths were revalidated on October 14,
 2026. GitHub Actions validates workflow and shell syntax before running the live
-acceptance matrix. Physical Pi acceptance, a published Tableau Public workbook,
-measured capacity results, and Kind/Kustomize integration remain open.
+acceptance matrix. CodeQL scans the Python source on changes to `master` and on a
+weekly schedule, while Dependabot checks Python and GitHub Actions dependencies
+weekly. Physical Pi acceptance, a published Tableau Public workbook, measured
+capacity results, and Kind/Kustomize integration remain open.
 
 Kind/Kustomize work exists on a separate, unmerged branch and is not a
 capability of this checkout. See the

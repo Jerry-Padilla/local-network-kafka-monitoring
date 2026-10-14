@@ -26,10 +26,17 @@ Phase 1 is designed for loopback-only local development.
 - SSID and BSSID fields default to omission and may be independently hashed
   with a device-local salt. Raw target addresses are omitted from events by
   default.
+- GitHub CodeQL analyzes the Python source on pushes and pull requests to
+  `master`, on a weekly schedule, and when manually dispatched. The workflow
+  uses the `security-extended` query suite with read-only repository access and
+  permission to publish code-scanning results.
+- Dependabot checks the root and nested Python manifests plus GitHub Actions
+  dependencies weekly. Minor and patch updates are grouped; major updates stay
+  separate for explicit review.
 
 Before shared or remote deployment, add encrypted Kafka transport and
 authentication, rotate all credentials, restrict container networks and host
-firewalls, and run dependency/container scanning. Example checks:
+firewalls, and run dependency and container scanning. Example checks:
 
 ```text
 pip-audit -r requirements-dev.txt
@@ -39,4 +46,6 @@ docker scout cves netpulse-stream-processor
 docker scout cves netpulse-incident-classifier
 ```
 
-These commands are instructions, not claims that scans have run.
+These commands are instructions, not claims that dependency or container scans
+have run. Dependabot version-update checks and CodeQL analysis do not replace
+dependency, container-image, or runtime vulnerability scanning.
