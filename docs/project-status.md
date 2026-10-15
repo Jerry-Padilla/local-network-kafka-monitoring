@@ -31,10 +31,11 @@ present in this checkout.
 | Query API integration | `./scripts/netpulse.ps1 api-integration` | Passed; 6 tests |
 | Query API smoke check | `./scripts/netpulse.ps1 api-verify` | Passed; health and cursor pagination |
 | Observability plane | host HTTP/API and SQL checks | Passed; 7 targets, 0 required down, 2 healthy rule groups, 3 SRE agents |
+| Local SRE failure drills | `./scripts/netpulse.ps1 failure-drill` plus recovery traffic | Passed on October 15, 2026; Kafka and PostgreSQL outage alerts fired and resolved, malformed traffic fired the dead-letter alert, and a traffic pause fired and then cleared the pipeline-stale alert after ingestion resumed |
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
 | GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
 | GitHub security configuration | `tests/test_github_security_config.py` plus pinned `actionlint` | Passed locally; CodeQL v4 scans Python and Dependabot covers Python manifests plus GitHub Actions |
-| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for `master` commit `a825543`; all 10 jobs succeeded in [CI run 38703454480](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38703454480), and [CodeQL run 38703454397](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38703454397) succeeded |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for `master` commit `f92d6c7`; all 10 jobs succeeded in [CI run 38705779880](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38705779880), and [CodeQL run 38705779943](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38705779943) succeeded |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
@@ -56,6 +57,17 @@ three provisioned NetPulse dashboards were returned by its API. The Windows
 Tableau workflow now promotes exports with native PowerShell, so it no longer
 depends on a separately installed host Python interpreter.
 
+The October 15 local SRE run used Docker Engine 29.8.1 and Compose 5.5.1.
+`NetPulseKafkaUnavailable` was observed firing 140 seconds after the broker was
+stopped, and the stack recovered 55 seconds after that observation. The
+PostgreSQL alert was observed firing 81 seconds after shutdown and recovered
+79 seconds after that observation. Deterministic malformed traffic fired
+`NetPulseDeadLetterGrowth`.
+A controlled traffic pause fired `NetPulsePipelineStale`; Alertmanager received
+it, and it cleared 40 seconds after 22 healthy records completed ingestion.
+These are single-run local measurements, not latency objectives or production
+SLO evidence.
+
 ## Implemented in this checkout
 
 - Versioned telemetry contracts, deterministic simulation, Kafka ingestion,
@@ -75,7 +87,8 @@ depends on a separately installed host Python interpreter.
 
 ## Open acceptance gates
 
-- Run the reversible failure drills on the target deployment.
+- Repeat the locally proven reversible failure drills on the target deployment
+  and retain target-specific alert and recovery evidence.
 - Install and exercise the agent on the target Raspberry Pi 3 B+, including
   outage recovery, reboot persistence, metrics, and dashboard visibility.
 - Build, privacy-review, and publish the Tableau Public workbook; no public URL

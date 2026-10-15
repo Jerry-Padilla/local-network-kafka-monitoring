@@ -92,6 +92,9 @@ branch state, and remaining gates.
 - Prometheus recording/alert rules, Alertmanager, three provisioned Grafana
   dashboards, read-only PostgreSQL monitoring identities, and matching
   operational runbooks. All UI ports bind only to localhost.
+- Local Docker failure drills have verified Kafka and PostgreSQL outage alerts,
+  dead-letter growth, pipeline staleness, Alertmanager delivery, and recovery;
+  target-host and physical-Pi acceptance remain open.
 
 The Raspberry Pi 3 B+ wired collector is mandatory. Its software and bootstrap
 path are implemented, but physical installation, outage recovery, metrics, and
