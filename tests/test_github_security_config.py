@@ -33,7 +33,7 @@ def test_codeql_scans_python_changes_and_on_a_weekly_schedule() -> None:
 
     action_steps = [step for step in analyze["steps"] if "uses" in step]
     assert action_steps == [
-        {"name": "Check out repository", "uses": "actions/checkout@v5"},
+        {"name": "Check out repository", "uses": "actions/checkout@v7"},
         {
             "name": "Initialize CodeQL",
             "uses": "github/codeql-action/init@v4",
