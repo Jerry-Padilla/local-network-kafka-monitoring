@@ -33,6 +33,11 @@ Phase 1 is designed for loopback-only local development.
 - Dependabot checks the root and nested Python manifests plus GitHub Actions
   dependencies weekly. Minor and patch updates are grouped; major updates stay
   separate for explicit review.
+- GitHub protects `master` with required current pull requests, all ten CI job
+  contexts, the CodeQL analysis job, resolved review conversations, linear
+  history, and administrator enforcement. Force pushes and branch deletion are
+  disabled. Zero approving reviews are required so the solo-maintained project
+  is not deadlocked, but all automated gates remain mandatory.
 
 Before shared or remote deployment, add encrypted Kafka transport and
 authentication, rotate all credentials, restrict container networks and host

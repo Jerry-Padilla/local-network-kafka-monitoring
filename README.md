@@ -45,12 +45,15 @@ monitor, a production-scale benchmark, or definitive root-cause detection.
 The software path in this checkout includes optional Airflow orchestration and
 the optional Tableau CSV export. Compose, lint, strict type checks, unit tests,
 and the live ingestion, streaming, classification, analytics, API, monitoring,
-Airflow orchestration, and Tableau-export paths were revalidated on October 14,
+Airflow orchestration, and Tableau-export paths were revalidated on October 15,
 2026. GitHub Actions validates workflow and shell syntax before running the live
 acceptance matrix. CodeQL scans the Python source on changes to `master` and on a
 weekly schedule, while Dependabot checks Python and GitHub Actions dependencies
-weekly. Physical Pi acceptance, a published Tableau Public workbook, measured
-capacity results, and Kind/Kustomize integration remain open.
+weekly. The protected `master` branch requires current pull requests, the full
+CI matrix, CodeQL, linear history, and resolved review conversations; force
+pushes and deletion are disabled. Physical Pi acceptance, a published Tableau
+Public workbook, measured capacity results, and Kind/Kustomize integration
+remain open.
 
 Kind/Kustomize work exists on a separate, unmerged branch and is not a
 capability of this checkout. See the
