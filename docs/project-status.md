@@ -34,7 +34,7 @@ present in this checkout.
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
 | GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
 | GitHub security configuration | `tests/test_github_security_config.py` plus pinned `actionlint` | Passed locally; CodeQL v4 scans Python and Dependabot covers Python manifests plus GitHub Actions |
-| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for `master` commit `eb60142`; all 10 jobs succeeded in [CI run 38657872946](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38657872946) |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for `master` commit `a825543`; all 10 jobs succeeded in [CI run 38703454480](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38703454480), and [CodeQL run 38703454397](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38703454397) succeeded |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
@@ -46,6 +46,9 @@ scheduler before running deterministic DAG tests against the shared metadata
 database.
 The test container also uses an isolated Linux bytecode-cache directory, so
 host-generated Windows bytecode cannot distort container coverage paths.
+The dependency audit aligned the Spark runtime, PySpark, and Kafka connector at
+4.2.0 and refreshed Alembic, Ruff, coverage.py, and jsonschema. Each change was
+validated on current `master`; the open dependency pull-request queue is empty.
 
 Live acceptance used an isolated Compose project with matched fresh Kafka and
 PostgreSQL volumes. Grafana 13.2.2 was healthy on `127.0.0.1:3000`, and all
