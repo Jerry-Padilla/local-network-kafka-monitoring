@@ -1,6 +1,6 @@
 # Project status
 
-- **Last audited:** October 14, 2026
+- **Last audited:** October 15, 2026
 - **Checkout:** integrated `master`
 - **Tagged release base:** `v1.0.0` at `e64292f`; current work extends that release
 
@@ -22,7 +22,7 @@ present in this checkout.
 | Compose rendering | `docker compose config --quiet` | Passed |
 | Lint | `./scripts/netpulse.ps1 lint` | Passed |
 | Strict typing | `./scripts/netpulse.ps1 typecheck` | Passed; 87 source files |
-| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 506 tests, 13 deselected; 88.31% coverage |
+| Integrated non-integration suite | `./scripts/netpulse.ps1 test` | Passed; 507 tests, 13 deselected; 88.31% coverage |
 | Live integration tests | `./scripts/netpulse.ps1 test-integration` | Passed; 6 tests, 448 deselected |
 | Ingestion invariants | `./scripts/netpulse.ps1 verify` | Passed; 67 raw events, 31 typed measurements, 0 duplicate IDs |
 | Spark streaming | `./scripts/netpulse.ps1 stream-verify` | Passed; 56 curated windows, 6 expected invalid records, 0 duplicate aggregate keys |
@@ -34,7 +34,7 @@ present in this checkout.
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
 | GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
 | GitHub security configuration | `tests/test_github_security_config.py` plus pinned `actionlint` | Passed locally; CodeQL v4 scans Python and Dependabot covers Python manifests plus GitHub Actions |
-| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for `master` commit `1c9e8ae`; all 10 jobs succeeded in [CI run 38598040659](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38598040659) |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for `master` commit `eb60142`; all 10 jobs succeeded in [CI run 38657872946](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38657872946) |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so

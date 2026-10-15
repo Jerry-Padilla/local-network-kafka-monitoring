@@ -6,7 +6,7 @@
 
 **Architecture:** NetPulse services expose bounded Prometheus metrics through one shared Python package. A Compose `monitoring` profile runs Prometheus, Alertmanager, Grafana OSS, Kafka exporter, and PostgreSQL exporter; Grafana reads both Prometheus and read-only PostgreSQL reporting views. The Pi remains the required wired edge collector, while the simulator and Docker agent provide repeatable development and failure evidence.
 
-**Tech Stack:** Python 3.12, prometheus-client 0.26.0, Docker Compose, Prometheus 3.14.0, Alertmanager 0.34.1, Grafana OSS 13.2.2, postgres_exporter 0.20.1, kafka_exporter 1.10.0, PostgreSQL 17, Kafka 4.2, Spark 4.1.2, pytest.
+**Tech Stack:** Python 3.12, prometheus-client 0.26.0, Docker Compose, Prometheus 3.14.0, Alertmanager 0.34.1, Grafana OSS 13.2.2, postgres_exporter 0.20.1, kafka_exporter 1.10.0, PostgreSQL 17, Kafka 4.2, Spark 4.2.0, pytest.
 
 **Spec:** `docs/superpowers/specs/2026-09-28-sre-observability-design.md`
 

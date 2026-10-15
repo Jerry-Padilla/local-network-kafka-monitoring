@@ -1,6 +1,6 @@
 FROM python:3.12.10-slim-bookworm
 
-ARG SPARK_VERSION=4.1.2
+ARG SPARK_VERSION=4.2.0
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -37,4 +37,4 @@ RUN addgroup --system --gid 10001 netpulse \
 USER netpulse
 
 ENTRYPOINT ["spark-submit"]
-CMD ["--master", "local[2]", "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.2", "--conf", "spark.driver.extraJavaOptions=-Divy.cache.dir=/var/lib/netpulse-streaming/.ivy2/cache -Divy.home=/var/lib/netpulse-streaming/.ivy2", "/app/services/stream-processor/app.py"]
+CMD ["--master", "local[2]", "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.13:4.2.0", "--conf", "spark.driver.extraJavaOptions=-Divy.cache.dir=/var/lib/netpulse-streaming/.ivy2/cache -Divy.home=/var/lib/netpulse-streaming/.ivy2", "/app/services/stream-processor/app.py"]

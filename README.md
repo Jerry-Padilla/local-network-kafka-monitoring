@@ -73,7 +73,7 @@ branch state, and remaining gates.
   exponential backoff, and marks delivery only after Kafka acknowledgement.
 - SSID/BSSID omission or hashing, target-address omission, systemd service
   assets, and mock-based hardware/error tests.
-- Spark 4.1.2 raw-measurement parsing, a 15-minute watermark, 1/5/15-minute and
+- Spark 4.2.0 raw-measurement parsing, a 15-minute watermark, 1/5/15-minute and
   daily windows, approximate percentiles, persistent checkpoints, structured
   progress logs, replay-safe PostgreSQL aggregates, and invalid source evidence.
 - Deterministic cross-agent rules for Wi-Fi, router, ISP, DNS, service, latency,
