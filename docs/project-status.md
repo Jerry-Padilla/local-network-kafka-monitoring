@@ -34,8 +34,8 @@ present in this checkout.
 | Local SRE failure drills | `./scripts/netpulse.ps1 failure-drill` plus recovery traffic | Passed on October 15, 2026; Kafka and PostgreSQL outage alerts fired and resolved, malformed traffic fired the dead-letter alert, and a traffic pause fired and then cleared the pipeline-stale alert after ingestion resumed |
 | Tableau export | `./scripts/netpulse.ps1 tableau-export` | Passed; four promoted CSV files |
 | GitHub workflow syntax | `actionlint` plus `ShellCheck` | Passed on the pinned Ubuntu 24.04 runner |
-| GitHub security configuration | `tests/test_github_security_config.py` plus pinned `actionlint` | Passed locally; CodeQL v4 scans Python and Dependabot covers Python manifests plus GitHub Actions |
-| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for `master` commit `f92d6c7`; all 10 jobs succeeded in [CI run 38705779880](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38705779880), and [CodeQL run 38705779943](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38705779943) succeeded |
+| GitHub security configuration | repository API, `tests/test_github_security_config.py`, and pinned `actionlint` | `master` protection requires current pull requests, all 10 CI jobs, CodeQL, resolved conversations, linear history, and admin enforcement; force pushes and deletion are disabled |
+| GitHub live acceptance | Airflow, observability, analytics, API, streaming, classification, ingestion | Passed for protected `master` commit `46f28ee`; all 10 jobs succeeded in [CI run 38806237202](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38806237202), and [CodeQL run 38806237263](https://github.com/Jerry-Padilla/local-network-kafka-monitoring/actions/runs/38806237263) succeeded |
 
 The audit also removed a host-only Git dependency from the Tableau deployment
 test. The test now validates the repository's `.gitignore` entry directly, so
@@ -84,6 +84,8 @@ SLO evidence.
   documented synthetic-data workbook workflow.
 - GitHub CodeQL analysis for Python and weekly Dependabot update checks for the
   monorepo's Python and GitHub Actions dependencies.
+- Enforced `master` pull requests with strict CI and CodeQL status checks,
+  resolved conversations, linear history, and force-push/deletion protection.
 
 ## Open acceptance gates
 
@@ -102,7 +104,7 @@ SLO evidence.
 
 | Branch | Relative state | Capability | Integration status |
 |---|---|---|---|
-| `master` | Current integrated line; CI hardening and isolated container bytecode caches included | Airflow orchestration, Tableau CSV export, live GitHub acceptance, CodeQL, and Dependabot | Integrated and pushed |
+| `master` | Current protected integrated line; CI hardening and isolated container bytecode caches included | Airflow orchestration, Tableau CSV export, live GitHub acceptance, CodeQL, Dependabot, and enforced merge gates | Integrated and pushed |
 | `codex/sre-observability` | Diverged from `v1.0.0` | Kind/Kustomize deployment and acceptance tooling | Separate local branch |
 
 Branch state describes the local repository at audit time and may change as
