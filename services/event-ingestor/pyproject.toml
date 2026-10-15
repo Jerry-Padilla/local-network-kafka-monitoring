@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Replay-safe NetPulse Kafka-to-PostgreSQL ingestion service"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "alembic==1.15.2",
+  "alembic==1.20.0",
   "confluent-kafka==2.8.2",
   "netpulse-contracts==0.1.0",
   "netpulse-observability==0.1.0",
