@@ -8,7 +8,7 @@
 -e ./services/analytics
 -e ./services/query-api
 alembic==1.20.0
-coverage[toml]==7.8.0
+coverage[toml]==7.16.2
 httpx==0.28.1
 mypy==1.15.0
 pytest==8.3.5
