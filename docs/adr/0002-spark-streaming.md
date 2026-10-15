@@ -2,10 +2,11 @@
 
 - Status: accepted
 - Date: 2026-07-26
+- Amended: 2026-10-14 (runtime and Kafka connector upgraded together to 4.2.0)
 
 ## Decision
 
-Use PySpark 4.1.2 with Java 17 and the matching Scala 2.13 Kafka connector.
+Use PySpark 4.2.0 with Java 17 and the matching Scala 2.13 Kafka connector.
 Run a local two-thread Spark driver in the opt-in `streaming` Compose profile.
 Read the raw measurement topic, retain invalid source evidence in PostgreSQL,
 apply event-time watermarks, and persist aggregate micro-batches through

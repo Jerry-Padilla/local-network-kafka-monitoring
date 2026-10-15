@@ -56,7 +56,7 @@ deployment path. It mounts `config/agent.example.yaml` and a persistent
 `agent-outbox` volume. Build and validate it with `agent-build` and
 `agent-validate`; use the systemd instructions for physical devices.
 
-The opt-in `streaming` profile runs PySpark 4.1.2 on Java 17 and Python 3.12.
+The opt-in `streaming` profile runs PySpark 4.2.0 on Java 17 and Python 3.12.
 `stream-run` starts the continuous query. `stream-once` processes currently
 available offsets and exits. `stream-verify` publishes deterministic records,
 runs `available-now`, and checks curated/reject invariants. The first Spark run
