@@ -76,6 +76,25 @@ in a `finally` block and no drill deletes volumes. It records UTC timestamps
 and the observed Prometheus alert state. A drill result proves only that exact
 run; retain its output with the environment and component versions.
 
+### Latest local acceptance evidence
+
+The October 15, 2026 Windows run used Docker Engine 29.8.1, Docker Compose
+5.5.1, and the isolated `netpulse-acceptance-20261012` Compose project. Before
+and after the drills, `monitoring-verify` reported 7 Prometheus targets, 2
+Grafana datasources, 3 provisioned dashboards, 2 healthy rule groups,
+Alertmanager ready, and 3 agents in the SRE reporting view.
+
+| Drill | Observed result |
+|---|---|
+| Kafka outage | Started `15:23:23Z`; `NetPulseKafkaUnavailable` was observed firing at `15:25:43Z`; broker and ingestor recovery completed at `15:26:38Z` |
+| PostgreSQL outage | Started `15:26:49Z`; `NetPulsePostgresUnavailable` was observed firing at `15:28:10Z`; database and ingestor recovery completed at `15:29:29Z` |
+| Malformed traffic | 12 deterministic records completed at `15:30:23Z`; `NetPulseDeadLetterGrowth` became active at `15:30:47Z` and was observed firing at `15:30:58Z` |
+| Traffic pause | `NetPulsePipelineStale` entered pending at `15:33:47Z`, reached Alertmanager by `15:35:47Z`, and was observed firing at `15:35:58Z`; 22 healthy recovery records completed at `15:37:03Z`, and the alert cleared at `15:37:43Z` |
+
+These results prove one local Docker run only. They do not complete the target
+deployment or physical Raspberry Pi acceptance gate and must not be presented
+as production recovery objectives.
+
 ## Airflow recovery checks
 
 Use `make airflow-verify` or `./scripts/netpulse.ps1 airflow-verify` for the
