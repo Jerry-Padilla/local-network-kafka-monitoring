@@ -168,7 +168,7 @@ def test_cursor_is_stable_for_equivalent_filters() -> None:
 def test_cursor_rejects_filter_mismatch() -> None:
     token = encode_cursor(_key(), DailyReliabilityFilters(agent_id="agent-1"))
 
-    with pytest.raises(CursorError, match="^cursor does not match filters$") as exc_info:
+    with pytest.raises(CursorError, match=r"^cursor does not match filters$") as exc_info:
         decode_cursor(token, DailyReliabilityFilters(agent_id="agent-2"))
     assert token not in str(exc_info.value)
 
