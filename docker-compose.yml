@@ -27,6 +27,7 @@ x-airflow-common: &airflow-common
 services:
   postgres:
     image: postgres:17.10-bookworm
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-384m}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-netpulse}
       POSTGRES_USER: ${POSTGRES_ADMIN_USER:-netpulse_admin}
@@ -58,7 +59,9 @@ services:
 
   kafka:
     image: apache/kafka:4.2.0
+    mem_limit: ${KAFKA_MEMORY_LIMIT:-768m}
     environment:
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -123,6 +126,7 @@ services:
     build:
       context: .
       dockerfile: services/event-ingestor/Dockerfile
+    mem_limit: ${EVENT_INGESTOR_MEMORY_LIMIT:-256m}
     depends_on:
       kafka:
         condition: service_healthy
@@ -277,6 +281,7 @@ services:
     build:
       context: .
       dockerfile: services/query-api/Dockerfile
+    mem_limit: ${QUERY_API_MEMORY_LIMIT:-256m}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -334,6 +339,7 @@ services:
   postgres-exporter:
     profiles: [monitoring]
     image: prometheuscommunity/postgres-exporter:v0.20.1
+    mem_limit: ${POSTGRES_EXPORTER_MEMORY_LIMIT:-128m}
     depends_on:
       monitoring-init:
         condition: service_completed_successfully
@@ -347,6 +353,7 @@ services:
   kafka-exporter:
     profiles: [monitoring]
     image: danielqsj/kafka-exporter:v1.10.0
+    mem_limit: ${KAFKA_EXPORTER_MEMORY_LIMIT:-128m}
     depends_on:
       kafka:
         condition: service_healthy
@@ -357,6 +364,7 @@ services:
   alertmanager:
     profiles: [monitoring]
     image: prom/alertmanager:v0.34.1
+    mem_limit: ${ALERTMANAGER_MEMORY_LIMIT:-128m}
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --storage.path=/alertmanager
@@ -384,6 +392,7 @@ services:
   prometheus:
     profiles: [monitoring]
     image: prom/prometheus:v3.14.0
+    mem_limit: ${PROMETHEUS_MEMORY_LIMIT:-384m}
     depends_on:
       alertmanager:
         condition: service_healthy
@@ -413,6 +422,7 @@ services:
   grafana:
     profiles: [monitoring]
     image: grafana/grafana:13.2.2
+    mem_limit: ${GRAFANA_MEMORY_LIMIT:-768m}
     depends_on:
       monitoring-init:
         condition: service_completed_successfully
@@ -422,6 +432,9 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-local-grafana-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_PLUGINS_PREINSTALL: grafana-postgresql-datasource,prometheus
+      GF_PLUGINS_DISABLE_PLUGINS: >-
+        elasticsearch,grafana-advisor-app,grafana-exploretraces-app,grafana-lokiexplore-app,grafana-metricsdrilldown-app,grafana-pyroscope-app,grafana-pyroscope-datasource,influxdb,jaeger,loki,mssql,mysql,opentsdb,stackdriver,tempo,zipkin
       GRAFANA_POSTGRES_PASSWORD: ${GRAFANA_POSTGRES_PASSWORD:-change-me-local-grafana}
       POSTGRES_DB: ${POSTGRES_DB:-netpulse}
     ports:

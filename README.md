@@ -138,6 +138,11 @@ Change both passwords in `.env` before using the stack on a shared machine.
 Host ports bind only to loopback. The default examples contain fabricated
 identifiers.
 
+The long-running local services have environment-overridable memory ceilings
+listed in `.env.example`. Kafka uses a 256 MiB initial and 512 MiB maximum JVM
+heap inside its 768 MiB container ceiling. Grafana loads only the PostgreSQL
+and Prometheus datasource backends used by the provisioned dashboards.
+
 ## Common commands
 
 | Action | Make | PowerShell |
