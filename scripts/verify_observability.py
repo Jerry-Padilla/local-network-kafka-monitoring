@@ -67,7 +67,13 @@ def verify(
     if not {"prometheus", "postgres"} <= uids:
         raise RuntimeError("Grafana is missing a required provisioned datasource")
     dashboards = get_json("http://127.0.0.1:3000/api/search?tag=netpulse", auth=grafana_auth)
-    if len({item.get("uid") for item in dashboards}) < 3:
+    required_dashboards = {
+        "netpulse-platform-health",
+        "netpulse-pipeline-reliability",
+        "netpulse-network-reliability",
+        "netpulse-container-resources",
+    }
+    if not required_dashboards <= {item.get("uid") for item in dashboards}:
         raise RuntimeError("Grafana is missing one or more NetPulse dashboards")
     rule_groups = get_json("http://127.0.0.1:9090/api/v1/rules")["data"]["groups"]
     if not rule_groups or any(

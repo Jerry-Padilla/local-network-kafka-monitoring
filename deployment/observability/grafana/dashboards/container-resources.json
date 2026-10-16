@@ -1,0 +1,103 @@
+{
+  "uid": "netpulse-container-resources",
+  "title": "NetPulse Container Resources",
+  "tags": ["netpulse", "sre", "containers"],
+  "schemaVersion": 42,
+  "refresh": "15s",
+  "time": {"from": "now-6h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "compose_project",
+        "label": "Compose project",
+        "type": "query",
+        "datasource": {"uid": "prometheus"},
+        "query": {
+          "query": "label_values(container_memory_working_set_bytes, container_label_com_docker_compose_project)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Current Memory",
+      "description": "Working-set memory over time for each running service in the selected NetPulse Compose project.",
+      "type": "timeseries",
+      "datasource": {"uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "targets": [
+        {
+          "expr": "max by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{container_label_com_docker_compose_project=~\"$compose_project\",container_label_com_docker_compose_service!=\"\"})",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Peak Memory in Range",
+      "description": "Maximum working-set memory observed for each service during the selected Grafana time range.",
+      "type": "stat",
+      "datasource": {"uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "targets": [
+        {
+          "expr": "max by (container_label_com_docker_compose_service) (max_over_time(container_memory_working_set_bytes{container_label_com_docker_compose_project=~\"$compose_project\",container_label_com_docker_compose_service!=\"\"}[$__range]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Memory Limit Used",
+      "description": "Current working-set memory divided by the configured Docker memory limit for each service.",
+      "type": "gauge",
+      "datasource": {"uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 9},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 0.75},
+              {"color": "red", "value": 0.9}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "max by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{container_label_com_docker_compose_project=~\"$compose_project\",container_label_com_docker_compose_service!=\"\"}) / max by (container_label_com_docker_compose_service) (container_spec_memory_limit_bytes{container_label_com_docker_compose_project=~\"$compose_project\",container_label_com_docker_compose_service!=\"\"} > 0)",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Total NetPulse Memory",
+      "description": "Combined working-set memory over time for running services in the selected Compose project.",
+      "type": "timeseries",
+      "datasource": {"uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 9},
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "targets": [
+        {
+          "expr": "sum(max by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{container_label_com_docker_compose_project=~\"$compose_project\",container_label_com_docker_compose_service!=\"\"}))",
+          "legendFormat": "total"
+        }
+      ]
+    }
+  ]
+}

@@ -64,7 +64,12 @@ def test_observability_verifier_checks_targets_datasources_alerts_and_sql() -> N
         if url.endswith("/api/datasources"):
             return [{"uid": "prometheus"}, {"uid": "postgres"}]
         if "/api/search?" in url:
-            return [{"uid": "one"}, {"uid": "two"}, {"uid": "three"}]
+            return [
+                {"uid": "netpulse-platform-health"},
+                {"uid": "netpulse-pipeline-reliability"},
+                {"uid": "netpulse-network-reliability"},
+                {"uid": "netpulse-container-resources"},
+            ]
         if url.endswith("/api/v1/rules"):
             return {"data": {"groups": [{"rules": [{"health": "ok"}]}]}}
         if url.endswith("/api/v2/status"):
@@ -81,13 +86,62 @@ def test_observability_verifier_checks_targets_datasources_alerts_and_sql() -> N
     assert result == {
         "targets": 1,
         "datasources": 2,
-        "dashboards": 3,
+        "dashboards": 4,
         "rule_groups": 1,
         "alerts_api": "ready",
         "sql": 1,
     }
     assert any(url.endswith("/api/v1/targets") for url in calls)
     assert sql == ["SELECT count(*) FROM v_sre_agent_status"]
+
+
+def test_observability_verifier_requires_container_resources_dashboard() -> None:
+    verifier = _load("verify_observability")
+
+    def get_json(url: str, **_kwargs):
+        if url.endswith("/api/v1/targets"):
+            return {"status": "success", "data": {"activeTargets": [{"health": "up"}]}}
+        if url.endswith("/api/datasources"):
+            return [{"uid": "prometheus"}, {"uid": "postgres"}]
+        if "/api/search?" in url:
+            return [{"uid": "one"}, {"uid": "two"}, {"uid": "three"}]
+        raise AssertionError(url)
+
+    with pytest.raises(RuntimeError, match="dashboard"):
+        verifier.verify(
+            get_json=get_json,
+            query_sql=lambda _statement: 1,
+            grafana_auth=("admin", "secret"),
+        )
+
+
+def test_observability_verifier_rejects_unrelated_fourth_dashboard() -> None:
+    verifier = _load("verify_observability")
+
+    def get_json(url: str, **_kwargs):
+        if url.endswith("/api/v1/targets"):
+            return {"status": "success", "data": {"activeTargets": [{"health": "up"}]}}
+        if url.endswith("/api/datasources"):
+            return [{"uid": "prometheus"}, {"uid": "postgres"}]
+        if "/api/search?" in url:
+            return [
+                {"uid": "netpulse-platform-health"},
+                {"uid": "netpulse-pipeline-reliability"},
+                {"uid": "netpulse-network-reliability"},
+                {"uid": "unrelated"},
+            ]
+        if url.endswith("/api/v1/rules"):
+            return {"data": {"groups": [{"rules": [{"health": "ok"}]}]}}
+        if url.endswith("/api/v2/status"):
+            return {"cluster": {"status": "ready"}}
+        raise AssertionError(url)
+
+    with pytest.raises(RuntimeError, match="dashboard"):
+        verifier.verify(
+            get_json=get_json,
+            query_sql=lambda _statement: 1,
+            grafana_auth=("admin", "secret"),
+        )
 
 
 def test_failure_drill_always_restores_stopped_dependency() -> None:

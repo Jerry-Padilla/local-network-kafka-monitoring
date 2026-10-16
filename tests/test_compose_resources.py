@@ -22,6 +22,7 @@ def test_long_running_local_services_have_overridable_memory_ceiling() -> None:
         "query-api": "${QUERY_API_MEMORY_LIMIT:-256m}",
         "postgres-exporter": "${POSTGRES_EXPORTER_MEMORY_LIMIT:-128m}",
         "kafka-exporter": "${KAFKA_EXPORTER_MEMORY_LIMIT:-128m}",
+        "cadvisor": "${CADVISOR_MEMORY_LIMIT:-256m}",
         "alertmanager": "${ALERTMANAGER_MEMORY_LIMIT:-128m}",
         "prometheus": "${PROMETHEUS_MEMORY_LIMIT:-384m}",
         "grafana": "${GRAFANA_MEMORY_LIMIT:-768m}",

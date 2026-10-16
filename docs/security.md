@@ -10,6 +10,10 @@ Phase 1 is designed for loopback-only local development.
   exposure in their current plaintext configuration.
 - Images run application code as a non-root UID. Infrastructure images retain
   their upstream defaults.
+- The optional cAdvisor container is privileged and mounts Docker host state
+  read-only so it can identify containers and collect cgroup metrics. Treat its
+  access as host-sensitive: it has no published port, runs only in the local
+  monitoring profile, and must not be exposed to untrusted networks.
 - The Spark driver also runs as non-root. Its checkpoint and Ivy volumes contain
   query state and downloaded pinned dependencies, not application credentials.
 - The classifier runs as non-root and reads only validated operational tables.
