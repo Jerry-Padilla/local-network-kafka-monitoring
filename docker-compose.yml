@@ -361,6 +361,27 @@ services:
     restart: unless-stopped
     networks: [backend]
 
+  cadvisor:
+    profiles: [monitoring]
+    image: ghcr.io/google/cadvisor:v0.60.6
+    mem_limit: ${CADVISOR_MEMORY_LIMIT:-256m}
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
+      - --store_container_labels=false
+      - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    restart: unless-stopped
+    networks: [backend]
+
   alertmanager:
     profiles: [monitoring]
     image: prom/alertmanager:v0.34.1
@@ -397,6 +418,8 @@ services:
       alertmanager:
         condition: service_healthy
       kafka-exporter:
+        condition: service_started
+      cadvisor:
         condition: service_started
       postgres-exporter:
         condition: service_started

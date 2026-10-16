@@ -24,12 +24,19 @@
   daily analytics refresh, source-quality gate, exact reconciliation, and
   reporting validation. Airflow has a separate metadata PostgreSQL database
   and does not control the continuous Kafka/Spark path.
-- Prometheus scrapes bounded service metrics plus Kafka/PostgreSQL exporters;
+- Prometheus scrapes bounded service metrics, cAdvisor container resource
+  metrics, and Kafka/PostgreSQL exporters;
   Alertmanager routes actionable local alerts; Grafana reads Prometheus and
   six read-only PostgreSQL views: `v_daily_probe_reliability`,
   `v_incident_summary`, `v_sre_agent_status`, `v_sre_pipeline_status`,
   `v_grafana_live_measurements`, and `v_analytics_workflow_status`. Their
   configured host ports are loopback-only.
+
+cAdvisor runs only in the optional monitoring profile. It exports Docker
+working-set and configured-limit metrics with only the Compose project and
+service identity labels retained. Prometheus stores the time series and the
+container-resources dashboard derives current, peak-range, percentage-of-limit,
+and total-project memory views.
 - The optional Tableau exporter reads the same approved reporting layer, removes
   sensitive identifiers, and atomically writes local CSV files for manual use in
   Tableau Public. It is a one-shot downstream consumer and does not replace

@@ -30,6 +30,7 @@ flowchart LR
     T --> M
     I --> M
     A --> M
+    CA[cAdvisor container metrics] --> M
     M --> G[Grafana OSS]
     P -->|read-only SRE views| G
     P -->|privacy-reduced reporting views| E[Tableau CSV export]
@@ -92,7 +93,7 @@ branch state, and remaining gates.
   persisted workflow status.
 - A loopback-only, read-only daily reliability query API with bounded
   cursor pagination and a dedicated PostgreSQL reporting login.
-- Prometheus recording/alert rules, Alertmanager, three provisioned Grafana
+- Prometheus recording/alert rules, Alertmanager, four provisioned Grafana
   dashboards, read-only PostgreSQL monitoring identities, and matching
   operational runbooks. All UI ports bind only to localhost.
 - Local Docker failure drills have verified Kafka and PostgreSQL outage alerts,
@@ -140,8 +141,9 @@ identifiers.
 
 The long-running local services have environment-overridable memory ceilings
 listed in `.env.example`. Kafka uses a 256 MiB initial and 512 MiB maximum JVM
-heap inside its 768 MiB container ceiling. Grafana loads only the PostgreSQL
-and Prometheus datasource backends used by the provisioned dashboards.
+heap inside its 768 MiB container ceiling. The optional monitoring profile adds
+a 256 MiB-capped cAdvisor service. Grafana loads only the PostgreSQL and
+Prometheus datasource backends used by the provisioned dashboards.
 
 ## Common commands
 
@@ -196,6 +198,13 @@ at `http://127.0.0.1:3000`; Prometheus is at port 9090 and Alertmanager at port
 `GRAFANA_ADMIN_PASSWORD`. The illustrative objectives are 99% successful
 ingestion, p95 processing below one second, and freshness below 60 seconds
 while traffic is active; they are portfolio targets, not production SLO claims.
+
+The **NetPulse Container Resources** dashboard uses cAdvisor metrics retained by
+Prometheus. Select the active Docker Compose project to see per-service memory
+over time, peak working-set memory for the selected range, current usage versus
+the configured container limit, and total project memory. Its 15-second samples
+describe container working sets, not all memory retained by Docker Desktop's
+Linux VM.
 
 The Grafana login reads six PostgreSQL views through `netpulse_report`:
 `v_daily_probe_reliability`, `v_incident_summary`, `v_sre_agent_status`,

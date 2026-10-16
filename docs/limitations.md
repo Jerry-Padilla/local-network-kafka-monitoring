@@ -24,6 +24,9 @@
   checks, speed tests, and heartbeats remain in operational tables.
 - Prometheus, Alertmanager, exporters, and Grafana run on one Docker host and
   therefore do not provide an independent monitoring failure domain.
+- The container-resources dashboard measures Linux-container working sets from
+  cAdvisor. It does not account for all Docker Desktop VM cache, daemon, or host
+  memory and therefore cannot equal Task Manager's total Docker/WSL footprint.
 - Incident classification uses static deterministic thresholds over a bounded
   database snapshot. It has no learned baseline, seasonality model, or
   definitive access to router/ISP internals.

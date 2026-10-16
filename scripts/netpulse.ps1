@@ -341,7 +341,7 @@ switch ($Command) {
         if ($LASTEXITCODE -ne 0) { throw "Observability verification failed" }
     }
     "monitoring-down" {
-        $MonitoringServices = @("grafana", "prometheus", "alertmanager", "kafka-exporter", "postgres-exporter")
+        $MonitoringServices = @("grafana", "prometheus", "alertmanager", "cadvisor", "kafka-exporter", "postgres-exporter")
         Invoke-DockerCompose (@("--profile", "monitoring", "stop") + $MonitoringServices)
         Invoke-DockerCompose (@("--profile", "monitoring", "rm", "-f") + $MonitoringServices)
     }

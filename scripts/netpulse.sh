@@ -213,7 +213,7 @@ case "$command" in
     python "$repository_root/scripts/verify_observability.py"
     ;;
   monitoring-down)
-    monitoring_services=(grafana prometheus alertmanager kafka-exporter postgres-exporter)
+    monitoring_services=(grafana prometheus alertmanager cadvisor kafka-exporter postgres-exporter)
     "${compose[@]}" --profile monitoring stop "${monitoring_services[@]}"
     "${compose[@]}" --profile monitoring rm -f "${monitoring_services[@]}"
     ;;

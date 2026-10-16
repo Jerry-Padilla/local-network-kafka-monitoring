@@ -46,6 +46,11 @@ scrape_configs:
       - targets: [kafka-exporter:9308]
         labels:
           required: "true"
+  - job_name: cadvisor
+    static_configs:
+      - targets: [cadvisor:8080]
+        labels:
+          required: "true"
   - job_name: pi-agent
     file_sd_configs:
       - files: [/etc/prometheus/pi-targets.json]

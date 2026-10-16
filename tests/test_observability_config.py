@@ -127,6 +127,7 @@ def test_monitoring_profile_uses_pinned_images_and_private_ports() -> None:
         "grafana": "grafana/grafana:13.2.2",
         "postgres-exporter": "prometheuscommunity/postgres-exporter:v0.20.1",
         "kafka-exporter": "danielqsj/kafka-exporter:v1.10.0",
+        "cadvisor": "ghcr.io/google/cadvisor:v0.60.6",
         "monitoring-init": "postgres:17.10-bookworm",
     }
 
@@ -141,8 +142,30 @@ def test_monitoring_profile_uses_pinned_images_and_private_ports() -> None:
     assert services["grafana"]["ports"] == ["127.0.0.1:3000:3000"]
     assert "ports" not in services["postgres-exporter"]
     assert "ports" not in services["kafka-exporter"]
+    assert "ports" not in services["cadvisor"]
     assert services["postgres"]["ports"][0].startswith("127.0.0.1:")
     assert services["kafka"]["ports"][0].startswith("${KAFKA_EXTERNAL_BIND_ADDRESS:-127.0.0.1}:")
+
+
+def test_cadvisor_is_bounded_and_exposes_only_compose_identity_labels() -> None:
+    cadvisor = _compose()["services"]["cadvisor"]
+
+    assert cadvisor["mem_limit"] == "${CADVISOR_MEMORY_LIMIT:-256m}"
+    assert cadvisor["privileged"] is True
+    assert cadvisor["devices"] == ["/dev/kmsg:/dev/kmsg"]
+    assert set(cadvisor["volumes"]) == {
+        "/:/rootfs:ro",
+        "/var/run:/var/run:ro",
+        "/sys:/sys:ro",
+        "/var/lib/docker:/var/lib/docker:ro",
+        "/dev/disk:/dev/disk:ro",
+    }
+    assert "--docker_only=true" in cadvisor["command"]
+    assert "--store_container_labels=false" in cadvisor["command"]
+    assert (
+        "--whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service"
+        in cadvisor["command"]
+    )
 
 
 def test_kafka_logs_use_the_persistent_data_directory() -> None:
@@ -204,6 +227,8 @@ def test_prometheus_scrapes_internal_services_and_empty_pi_file_sd() -> None:
     ]
     assert jobs["postgres-exporter"]["static_configs"][0]["targets"] == ["postgres-exporter:9187"]
     assert jobs["kafka-exporter"]["static_configs"][0]["targets"] == ["kafka-exporter:9308"]
+    assert jobs["cadvisor"]["static_configs"][0]["targets"] == ["cadvisor:8080"]
+    assert jobs["cadvisor"]["static_configs"][0]["labels"]["required"] == "true"
     assert jobs["pi-agent"]["file_sd_configs"][0]["files"] == ["/etc/prometheus/pi-targets.json"]
     assert (
         json.loads((OBSERVABILITY / "prometheus" / "pi-targets.json").read_text(encoding="utf-8"))
@@ -292,7 +317,7 @@ def test_alerts_are_actionable_and_empty_pi_discovery_is_safe() -> None:
     )
 
 
-def test_three_dashboards_are_provisioned_with_required_panels_and_datasources() -> None:
+def test_four_dashboards_are_provisioned_with_required_panels_and_datasources() -> None:
     provider = yaml.safe_load(
         (OBSERVABILITY / "grafana" / "provisioning" / "dashboards" / "provider.yml").read_text(
             encoding="utf-8"
@@ -326,6 +351,15 @@ def test_three_dashboards_are_provisioned_with_required_panels_and_datasources()
                 "Agent Freshness",
                 "Current Incidents",
                 "Pi Outbox",
+            },
+        ),
+        "container-resources.json": (
+            "netpulse-container-resources",
+            {
+                "Current Memory",
+                "Peak Memory in Range",
+                "Memory Limit Used",
+                "Total NetPulse Memory",
             },
         ),
     }
@@ -394,6 +428,26 @@ def test_three_dashboards_are_provisioned_with_required_panels_and_datasources()
     assert "order by started_at desc" in workflow_sql
     assert "'no_runs' as status" in workflow_sql
     assert "not exists" in workflow_sql
+
+    resources = json.loads(
+        (OBSERVABILITY / "grafana" / "dashboards" / "container-resources.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert resources["time"] == {"from": "now-6h", "to": "now"}
+    assert resources["refresh"] == "15s"
+    queries = {
+        panel["title"]: [target["expr"] for target in panel["targets"]]
+        for panel in resources["panels"]
+    }
+    assert "max_over_time" in queries["Peak Memory in Range"][0]
+    assert "container_spec_memory_limit_bytes" in queries["Memory Limit Used"][0]
+    for expressions in queries.values():
+        for expression in expressions:
+            assert 'container_label_com_docker_compose_project=~"$compose_project"' in expression
+    for panel in resources["panels"]:
+        assert panel["datasource"]["uid"] == "prometheus"
+        assert panel["fieldConfig"]["defaults"]["unit"] in {"bytes", "percentunit"}
 
 
 def test_every_alert_runbook_has_operational_sections_and_no_destructive_reset() -> None:
