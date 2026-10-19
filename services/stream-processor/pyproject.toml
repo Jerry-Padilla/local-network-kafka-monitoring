@@ -11,7 +11,7 @@ dependencies = [
   "netpulse-contracts==0.1.0",
   "netpulse-observability==0.1.0",
   "prometheus-client==0.26.0",
-  "psycopg[binary]==3.2.6",
+  "psycopg[binary]==3.3.6",
   "pydantic==2.11.1",
   "pyspark==4.2.0",
   "structlog==25.2.0",
