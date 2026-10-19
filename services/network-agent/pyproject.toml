@@ -13,7 +13,7 @@ dependencies = [
   "netpulse-contracts==0.1.0",
   "netpulse-observability==0.1.0",
   "prometheus-client==0.26.0",
-  "pydantic==2.11.1",
+  "pydantic==2.14.1",
   "PyYAML==6.0.2",
   "structlog==25.2.0",
 ]
