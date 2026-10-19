@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "Lightweight Raspberry Pi measurement agent for NetPulse"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-  "confluent-kafka==2.8.2",
+  "confluent-kafka==2.16.0",
   "dnspython==2.7.0",
   "netpulse-contracts==0.1.0",
   "netpulse-observability==0.1.0",

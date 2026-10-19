@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Deterministic multi-agent incident classification for NetPulse"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "confluent-kafka==2.8.2",
+  "confluent-kafka==2.16.0",
   "netpulse-contracts==0.1.0",
   "netpulse-observability==0.1.0",
   "prometheus-client==0.26.0",
